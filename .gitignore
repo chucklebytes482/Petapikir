@@ -34,3 +34,7 @@ releases/
 *.aab
 logs_*.zip
 public/assets/aistudio/
+
+# Folder secret: cegah berkas mentah sensitif, hanya izinkan arsip ZIP terenkripsi
+secret/*
+!secret/*.zip

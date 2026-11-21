@@ -1,13 +1,13 @@
 <resources>
     <string name="app_name">PetaPikir</string>
     <string name="oauth_web_client_id">1000578483438-npe5k5vf36dbo80cjvl5kbn69b6k5qe5.apps.googleusercontent.com</string>
-    <string name="web_guide_url">https://chucklebytes482.github.io/apk/</string>
+    <string name="web_guide_url">https://chucklebytes482.github.io/petapikir/</string>
 
     <string name="home_drive_card_title">Google Drive</string>
     <string name="home_drive_not_connected">Belum terhubung</string>
     <string name="home_drive_connected">Terhubung</string>
     <string name="home_web_guide_title">Web Panduan</string>
-    <string name="home_web_guide_subtitle">chucklebytes482.github.io/apk</string>
+    <string name="home_web_guide_subtitle">chucklebytes482.github.io/petapikir</string>
     <string name="search_placeholder">Cari peta pikiran…</string>
     <string name="new_map_cta">Peta Baru</string>
     <string name="empty_library_title">Belum ada peta pikiran</string>
