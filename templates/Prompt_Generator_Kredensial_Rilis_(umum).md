@@ -33,8 +33,8 @@ Daftar berkas yang wajib dibuat dan dimasukkan ke dalam `secret/<slug_app>_relea
 
 Aturan Keamanan & Teknis Wajib:
 - JANGAN mengubah `debug.keystore`, `debug.keystore.base64`, atau blok `signingConfigs` / `signingConfig` di `app/build.gradle.kts`.
-- Pastikan seluruh berkas mentah sensitif (`.jks`, `keystore.properties`, `google-services.json`, `.env`) diproses di direktori sementara (`/tmp`) lalu dihapus bersih setelah masuk ke ZIP terenkripsi; simpan `secret/<slug_app>_release_secrets.zip` beserta salinan teks UTF-8 `secret/<slug_app>_release_secrets.zip.base64` dan `secret/README.md` (tanpa password di dalamnya) agar sinkronisasi GitHub AI Studio (yang menyaring berkas biner `.zip`) tetap mengunggah folder `secret/` ke GitHub.
-- Pastikan `.gitignore` memblokir berkas mentah sensitif (`*.jks`, `*.keystore`, `*.b64`, `keystore.properties`, `google-services.json`, `.env`, `secret/*_Guide*.md`, `secret/*.txt`, `secret/*.json` — jangan pakai `secret/*` atau `*.base64` agar `secret/README.md` dan `secret/*.zip.base64` tetap tersinkron ke GitHub).
+- Pastikan seluruh berkas mentah sensitif (`.jks`, `keystore.properties`, `google-services.json`, `.env`) diproses di direktori sementara (`/tmp`) lalu dihapus bersih setelah masuk ke ZIP terenkripsi; simpan hanya arsip terenkripsi `secret/<slug_app>_release_secrets.zip` di folder utama `secret/` agar dapat langsung diunduh dari AI Studio lalu dihapus setelah disimpan.
+- Pastikan `.gitignore` memblokir berkas mentah sensitif (`*.jks`, `*.keystore`, `*.b64`, `keystore.properties`, `google-services.json`, `.env`, `secret/*.md`, `secret/*.txt`, `secret/*.json` — jangan pakai `secret/*` agar folder `secret/` dan berkas `.zip` tetap tampil di AI Studio).
 - Enkripsi arsip ZIP dengan password acak kuat (minimal 20 karakter alfanumerik), verifikasi bahwa arsip bisa didekripsi dan isi `.jks` di dalamnya valid dengan `keytool`, lalu tampilkan password ZIP tersebut di respons chat saja (JANGAN menulis password ZIP ke dalam berkas repositori).
 ```
 
@@ -57,7 +57,7 @@ Aturan Keamanan & Teknis Wajib:
 
 1. **Simpan Password Secara Terpisah**: Catat password ZIP terenkripsi di pengelola kata sandi (*password manager*) atau catatan terkunci pribadi — **jangan** pernah menuliskan password pembuka ZIP di dalam repositori GitHub.
 2. **Backup Ganda**: Selain tersimpan di folder utama `secret/`, salin file `secret/<slug_app>_release_secrets.zip` ke Google Drive pribadi atau penyimpanan offline agar kunci rilis tidak pernah hilang (kehilangan `.jks` berarti APK rilis berikutnya tidak bisa menimpa APK yang sudah terpasang).
-3. **Cara Membuka Arsip di HP / PC**:
-   - **Android**: Gunakan aplikasi **ZArchiver** atau pengelola berkas yang mendukung ZIP ber-password, lalu masukkan password yang diberikan AI.
-   - **Linux / macOS**: Jalankan `unzip secret/<slug_app>_release_secrets.zip` lalu masukkan password.
-   - **Windows**: Gunakan **7-Zip** atau **WinRAR** (Extract Here → masukkan password).
+3. **Cara Membuka Arsip / Kontainer di HP / PC**:
+   - **Android (VeraCrypt `.hc` — Direkomendasikan)**: Gunakan aplikasi **Vault Explorer** (dari F-Droid), pilih file `.hc`, pilih format **VeraCrypt**, Cipher **AES**, Hash **SHA-512**, PIM **kosong (default)**, lalu masukkan password pembuka.
+   - **Android (ZIP)**: Gunakan aplikasi **ZArchiver** atau pengelola berkas yang mendukung ZIP ber-password.
+   - **PC (Linux / macOS / Windows)**: Gunakan aplikasi **VeraCrypt** resmi untuk membuka kontainer `.hc` (atau `unzip` / **7-Zip** untuk `.zip`).

@@ -35,8 +35,7 @@ releases/
 logs_*.zip
 public/assets/aistudio/
 
-# Folder secret: cegah berkas mentah tak terenkripsi, izinkan arsip terenkripsi (.zip / .zip.base64) & README
-secret/*_Guide*.md
-secret/SETUP_GOOGLE_CLOUD.md
+# Folder secret: cegah berkas mentah tak terenkripsi, biarkan kontainer VeraCrypt .hc & unduh_secret.html tetap tampil
+secret/*.md
 secret/*.txt
 secret/*.json
