@@ -1,0 +1,6 @@
+{
+  "name": "PetaPikir",
+  "description": "Aplikasi mind map sederhana dengan tata letak top-down dan auto-sinkronisasi ke Google Drive.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
