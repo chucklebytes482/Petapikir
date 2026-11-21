@@ -33,8 +33,8 @@ Daftar berkas yang wajib dibuat dan dimasukkan ke dalam `secret/<slug_app>_relea
 
 Aturan Keamanan & Teknis Wajib:
 - JANGAN mengubah `debug.keystore`, `debug.keystore.base64`, atau blok `signingConfigs` / `signingConfig` di `app/build.gradle.kts`.
-- Pastikan seluruh berkas mentah sensitif (`.jks`, `keystore.properties`, `google-services.json`, `.env`) diproses di direktori sementara (`/tmp`) lalu dihapus bersih setelah masuk ke ZIP terenkripsi; hanya arsip terenkripsi `secret/<slug_app>_release_secrets.zip` yang disimpan di folder utama `secret/`.
-- Pastikan `.gitignore` memblokir berkas mentah sensitif (`*.jks`, `*.keystore`, `*.b64`, `keystore.properties`, `google-services.json`, `.env`, `secret/*.md`, `secret/*.txt`, `secret/*.json` — hindari pola negasi `secret/*` + `!secret/*.zip` agar arsip `.zip` terenkripsi tetap terbaca saat push ke GitHub, atau blokir seluruh `secret/` jika tidak ingin menyimpan arsip di repositori).
+- Pastikan seluruh berkas mentah sensitif (`.jks`, `keystore.properties`, `google-services.json`, `.env`) diproses di direktori sementara (`/tmp`) lalu dihapus bersih setelah masuk ke ZIP terenkripsi; simpan `secret/<slug_app>_release_secrets.zip` beserta salinan teks UTF-8 `secret/<slug_app>_release_secrets.zip.base64` dan `secret/README.md` (tanpa password di dalamnya) agar sinkronisasi GitHub AI Studio (yang menyaring berkas biner `.zip`) tetap mengunggah folder `secret/` ke GitHub.
+- Pastikan `.gitignore` memblokir berkas mentah sensitif (`*.jks`, `*.keystore`, `*.b64`, `keystore.properties`, `google-services.json`, `.env`, `secret/*_Guide*.md`, `secret/*.txt`, `secret/*.json` — jangan pakai `secret/*` atau `*.base64` agar `secret/README.md` dan `secret/*.zip.base64` tetap tersinkron ke GitHub).
 - Enkripsi arsip ZIP dengan password acak kuat (minimal 20 karakter alfanumerik), verifikasi bahwa arsip bisa didekripsi dan isi `.jks` di dalamnya valid dengan `keytool`, lalu tampilkan password ZIP tersebut di respons chat saja (JANGAN menulis password ZIP ke dalam berkas repositori).
 ```
 

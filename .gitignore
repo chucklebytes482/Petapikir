@@ -35,7 +35,8 @@ releases/
 logs_*.zip
 public/assets/aistudio/
 
-# Folder secret: cegah berkas mentah tak terenkripsi, biarkan arsip .zip terenkripsi ikut tersimpan
-secret/*.md
+# Folder secret: cegah berkas mentah tak terenkripsi, izinkan arsip terenkripsi (.zip / .zip.base64) & README
+secret/*_Guide*.md
+secret/SETUP_GOOGLE_CLOUD.md
 secret/*.txt
 secret/*.json
