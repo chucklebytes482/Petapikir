@@ -35,6 +35,7 @@ releases/
 logs_*.zip
 public/assets/aistudio/
 
-# Folder secret: cegah berkas mentah sensitif, hanya izinkan arsip ZIP terenkripsi
-secret/*
-!secret/*.zip
+# Folder secret: cegah berkas mentah tak terenkripsi, biarkan arsip .zip terenkripsi ikut tersimpan
+secret/*.md
+secret/*.txt
+secret/*.json

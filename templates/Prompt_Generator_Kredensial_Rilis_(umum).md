@@ -34,7 +34,7 @@ Daftar berkas yang wajib dibuat dan dimasukkan ke dalam `secret/<slug_app>_relea
 Aturan Keamanan & Teknis Wajib:
 - JANGAN mengubah `debug.keystore`, `debug.keystore.base64`, atau blok `signingConfigs` / `signingConfig` di `app/build.gradle.kts`.
 - Pastikan seluruh berkas mentah sensitif (`.jks`, `keystore.properties`, `google-services.json`, `.env`) diproses di direktori sementara (`/tmp`) lalu dihapus bersih setelah masuk ke ZIP terenkripsi; hanya arsip terenkripsi `secret/<slug_app>_release_secrets.zip` yang disimpan di folder utama `secret/`.
-- Pastikan `.gitignore` memblokir berkas mentah sensitif (`*.jks`, `*.keystore`, `*.b64`, `keystore.properties`, `google-services.json`, `.env`, `secret/*` kecuali `!secret/*.zip` jika ingin menyimpan arsip terenkripsi, atau blokir seluruh `secret/` jika repositori bersifat publik).
+- Pastikan `.gitignore` memblokir berkas mentah sensitif (`*.jks`, `*.keystore`, `*.b64`, `keystore.properties`, `google-services.json`, `.env`, `secret/*.md`, `secret/*.txt`, `secret/*.json` — hindari pola negasi `secret/*` + `!secret/*.zip` agar arsip `.zip` terenkripsi tetap terbaca saat push ke GitHub, atau blokir seluruh `secret/` jika tidak ingin menyimpan arsip di repositori).
 - Enkripsi arsip ZIP dengan password acak kuat (minimal 20 karakter alfanumerik), verifikasi bahwa arsip bisa didekripsi dan isi `.jks` di dalamnya valid dengan `keytool`, lalu tampilkan password ZIP tersebut di respons chat saja (JANGAN menulis password ZIP ke dalam berkas repositori).
 ```
 
