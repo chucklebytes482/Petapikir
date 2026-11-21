@@ -4,11 +4,13 @@
 
 Dokumen ini adalah panduan inti (*personality* & aturan wajib) untuk membangun aplikasi Android ringan (**< 10 MB**) secara konsisten lintas proyek.
 
-### Paket 4 Dokumen Panduan
-1. **`Panduan_Personality_Build_APK_(umum).md`** *(dokumen ini)* — Prinsip wajib, penamaan Euskara, alur Fase 1–5, templat PRD, dan checklist rilis.
-2. **`Template_Source_Code_UI_Sync_(umum).md`** — Kumpulan source code Kotlin siap salin (tema otomatis sistem, urutan prioritas Beranda, lembar status akun, auth, Drive sync, selection bar, & Robolectric test).
-3. **`apk_Release_Setup_Guide_(umum).md`** — Setup keystore release, GitHub Secrets, `.gitignore`, Gradle R8, ProGuard, SHA-1/SHA-256, dan workflow GitHub Actions.
-4. **`Alur_Mindmap_Build_APK_(umum).json`** — Peta visual ringkas seluruh alur pembuatan hingga rilis APK.
+### Paket Dokumen Panduan (Seluruhnya di Folder `panduan/`)
+1. **`panduan/Panduan_Personality_Build_APK_(umum).md`** *(dokumen ini)* — Prinsip wajib, penamaan Euskara, penataan folder, alur Fase 1–5, templat PRD, dan checklist rilis.
+2. **`panduan/Template_Source_Code_UI_Sync_(umum).md`** — Kumpulan source code Kotlin siap salin (tema otomatis sistem, urutan prioritas Beranda, lembar status akun, auth, Drive sync, selection bar, & Robolectric test).
+3. **`panduan/apk_Release_Setup_Guide_(umum).md`** — Setup keystore release, GitHub Secrets, `.gitignore`, enkripsi secret VeraCrypt (`.hc`), Gradle R8, ProGuard, SHA-1/SHA-256, dan workflow GitHub Actions.
+4. **`panduan/Prompt_Generator_Kredensial_Rilis_(umum).md`** — Prompt siap salin & SOP pembuatan kredensial rilis permanen ke kontainer VeraCrypt (`.hc`) ramah **Vault Explorer (F-Droid)**.
+5. **`panduan/Alur_Mindmap_Build_APK_(umum).json`** — Peta visual ringkas seluruh alur pembuatan hingga rilis APK.
+6. **`panduan/SETUP_GOOGLE_CLOUD.md`** — Dokumentasi publik kesiapan Google Cloud & OAuth proyek (tanpa kata sandi / kunci privat).
 
 ---
 
@@ -21,7 +23,8 @@ Dokumen ini adalah panduan inti (*personality* & aturan wajib) untuk membangun a
 | **Keterangan & Panduan** | Label singkat dan data inti saja di UI aplikasi; **seluruh keterangan rinci hanya di GitHub Pages** (`docs/index.html`). | Paragraf penjelas, instruksi teknis OAuth/PAT, atau subteks repetitif di dalam layar aplikasi. |
 | **Sinkronisasi Ringkas** | Sinkronisasi **2 arah manual per folder/item** langsung dari kartu Beranda; identitas pasangan & akun otomatis dari sumbernya; nama folder lokal otomatis disamakan & dibuat bila belum ada. | Layanan latar belakang, pemantau berkas, jadwal periodik, tombol *Sinkron Semua* / *Sinkron Sekarang* global, opsi kebijakan hapus berlapis, atau input nama/label manual yang memecah identitas sumber. |
 | **Penamaan & ID** | **1 kata asli Euskara** 3 suku kata (4–8 huruf Latin tanpa diakritik) → `com.aistudio.<kata>`. | Nama panjang > 2 kata, karakter diakritik, atau akhiran acak tanpa makna. |
-| **Ukuran & Rilis APK** | R8 + resource shrinking + ABI `arm64-v8a` (**< 10 MB**), publikasi via GitHub Actions Releases. | Menyimpan `.apk`, `.aab`, `.jks`, atau API key di repositori Git. |
+| **Ukuran & Rilis APK** | R8 + resource shrinking + ABI `arm64-v8a` (**< 10 MB**), publikasi via GitHub Actions Releases. | Menyimpan `.apk`, `.aab`, `.jks`, `.hc`, atau API key di repositori Git. |
+| **Penataan Folder & Secret** | Semua panduan & template di `panduan/`; `docs/` **khusus GitHub Pages**; berkas rahasia dikemas ke kontainer **VeraCrypt (`.hc`)** di `secret/` yang **diabaikan penuh di `.gitignore`** (hanya lokal di AI Studio). | Mencampur dokumen internal ke `docs/`, membuat folder `templates/` terpisah, atau mem-push folder `secret/` / `.hc` ke GitHub. |
 | **Otomasi Teknis (Ramah HP)** | AI **otomatiskan & kerjakan semua hal teknis** yang bisa dieksekusi (OAuth, Firebase, SHA-1/SHA-256 debug, Gradle R8, CI/CD, skrip, test) + beri **deep link langsung** untuk klik wajib akun pribadi. | Menyuruh pengguna menjalankan perintah teknis manual atau mencari menu Google Cloud Console di layar HP yang sempit (harus Mode Desktop). |
 
 ---
@@ -40,8 +43,10 @@ Dokumen ini adalah panduan inti (*personality* & aturan wajib) untuk membangun a
    - Untuk aplikasi pasangan folder/dokumen, cukup minta pengguna **memilih Sumber** (mis. Google Drive atau 1 folder khusus repositori Git) tanpa pemilih jalur lokal manual — gunakan direktori standar perangkat (mis. `/storage/emulated/0/Documents`) dan buat folder bernama sama secara otomatis bila belum ada.
    - Sediakan tombol sinkronisasi **hanya per kartu folder di Beranda**; gunakan *tap* kartu untuk membuka Detail dan tekan tahan untuk mode pilih banyak via `SelectionActionBar`.
    - Pastikan seluruh target sentuh minimal **48dp × 48dp** dengan `contentDescription` yang jelas.
-5. **Keamanan & Tanpa Data Palsu**
+5. **Keamanan, Kontainer VeraCrypt & Pemisahan Folder**
    - Jangan pernah menanamkan API key, keystore, atau kredensial di kode/Git. Gunakan secrets lingkungan, Android Keystore, atau Google Sign-In resmi.
+   - Seluruh berkas rahasia sementara (keystore `.jks`, panduan secret, `keystore.properties`, dsb.) dikemas dalam kontainer standar **VeraCrypt (`.hc`)** (`AES-256-XTS`, `SHA-512`, `ext2`, siap dibuka di HP lewat **Vault Explorer — F-Droid**) di folder `secret/` yang **dimasukkan penuh ke `.gitignore`** sehingga hanya ada di AI Studio dan tidak pernah masuk ke GitHub.
+   - Tempatkan seluruh panduan & template pengembang di folder `panduan/`, dan jaga folder `docs/` agar **hanya** berisi berkas web GitHub Pages.
 6. **Otomasi Teknis Penuh & Alur Ramah HP (*Mobile-First Developer*)**
    - Asumsikan pengguna bisa bekerja dari **HP**, di mana tampilan **Google Cloud Console** sulit dinavigasi tanpa mengaktifkan **Mode Desktop**.
    - **Wajib dikerjakan otomatis oleh AI:** provisioning OAuth & Firebase, pendaftaran `applicationId` + SHA-1/SHA-256 debug, pembacaan sidik jari keystore debug, konfigurasi Gradle R8/ProGuard, pembuatan workflow GitHub Actions, GitHub Pages, skrip otomasi CLI (`.sh`), kompilasi, dan Unit/Robolectric Test.
@@ -106,9 +111,11 @@ Dokumen ini adalah panduan inti (*personality* & aturan wajib) untuk membangun a
 
 ## Fase 5 — Otomasi GitHub Release & GitHub Pages
 
-1. **Tanpa Biner di Repo:** Jangan commit `.apk`, `.aab`, `.jks`, atau folder `releases/` / `dist/` ke Git.
-2. **GitHub Actions Release:** Bangun, uji, verifikasi tanda tangan, dan unggah APK + `CHECKSUMS.txt` + `CERT_FINGERPRINT.txt` otomatis ke **GitHub Releases** (lihat `.github/workflows/release.yml` di `apk_Release_Setup_Guide_(umum).md`).
-3. **GitHub Pages (`docs/index.html`):** Pusat seluruh keterangan rinci, panduan setup, penjelasan alur sinkronisasi, dan tombol unduh `../releases/latest`. Pastikan ramah HP (*mobile-first*): hindari menaruh teks teknis panjang seperti sidik jari sertifikat SHA-256 mentah; bila ada jalur/kode panjang, bungkus di dalam kotak kode (`<pre>`) atau tabel yang bisa digulir horizontal.
+1. **Tanpa Biner & Rahasia di Repo:** Jangan commit `.apk`, `.aab`, `.jks`, `.hc`, folder `secret/`, atau folder `releases/` / `dist/` ke Git (pastikan `secret/` dan `*.hc` masuk `.gitignore` sehingga kontainer VeraCrypt hanya ada di AI Studio sebelum diunduh ke HP).
+2. **GitHub Actions Release:** Bangun, uji, verifikasi tanda tangan, dan unggah APK + `CHECKSUMS.txt` + `CERT_FINGERPRINT.txt` otomatis ke **GitHub Releases** (lihat `.github/workflows/release.yml` di `panduan/apk_Release_Setup_Guide_(umum).md`).
+3. **Pemisahan `panduan/` vs `docs/` (GitHub Pages):**
+   - Simpan seluruh panduan, template, mindmap, dan `SETUP_GOOGLE_CLOUD.md` versi publik di folder `panduan/`.
+   - Jaga folder `docs/` **hanya** untuk berkas web publik **GitHub Pages** (`index.html`, `privacy.html`, `terms.html`) sebagai pusat keterangan rinci pengguna dan tombol unduh `../releases/latest`. Pastikan ramah HP (*mobile-first*): hindari menaruh teks teknis panjang seperti sidik jari sertifikat SHA-256 mentah; bila ada jalur/kode panjang, bungkus di dalam kotak kode (`<pre>`) atau tabel yang bisa digulir horizontal.
 
 ---
 
@@ -137,8 +144,9 @@ Buat aplikasi Android (Kotlin + Jetpack Compose + Material 3 + MVVM):
 - Otomasi Teknis (Ramah HP):
   - Kerjakan dan otomatiskan semua hal teknis yang bisa dilakukan AI (OAuth, Firebase, ekstraksi & pendaftaran SHA-1/SHA-256 debug, Gradle R8, GitHub Actions, skrip CLI, kompilasi, & pengujian).
   - Jika ada langkah yang wajib dilakukan dari akun pribadi di Google Cloud Console, berikan tautan langsung (deep link berisi project_id) + nilai siap salin agar mudah diakses di HP tanpa repot mencari menu di Mode Desktop.
-- Pengujian & Rilis:
+- Pengujian, Penataan Folder & Rilis:
   - Sertakan Unit Test & Robolectric UI Test.
+  - Simpan seluruh dokumen panduan & template di folder panduan/, jaga folder docs/ khusus GitHub Pages, dan kemas kredensial rilis dalam kontainer VeraCrypt (.hc) di folder secret/ yang diabaikan penuh di .gitignore (hanya lokal di AI Studio).
   - Siapkan .github/workflows/release.yml untuk rilis APK signed ke GitHub Releases tanpa menyimpan APK di repositori.
 ```
 
@@ -150,6 +158,6 @@ Buat aplikasi Android (Kotlin + Jetpack Compose + Material 3 + MVVM):
 - [ ] **Prioritas Beranda Wajib:** #1 Status Akun, #2 Web Panduan (GitHub Pages), tombol sinkron hanya per kartu folder.
 - [ ] **Tanpa Pemilih Tema, Layanan Latar Belakang, Jadwal, & Keterangan Berlebih** di aplikasi (seluruh panduan rinci di GitHub Pages).
 - [ ] **Penamaan Euskara** konsisten di `app_name`, `applicationId`, `proguard-rules.pro`, dan OAuth/Firebase.
-- [ ] **Bebas file sensitif & biner APK** di repositori Git.
+- [ ] **Penataan Folder & Keamanan Secret:** semua panduan/template berada di `panduan/`, `docs/` khusus GitHub Pages, serta `secret/` dan `*.hc` masuk `.gitignore` (bebas file sensitif & biner APK di GitHub).
 - [ ] **Otomasi Teknis Ramah HP:** seluruh setup teknis (OAuth/Firebase/SHA-1 debug/CI-CD) sudah dieksekusi AI; sisa langkah manual memakai *deep link* langsung + nilai siap salin.
 - [ ] **Unit Test & Robolectric 100% lulus** + tanda tangan `apksigner` valid.

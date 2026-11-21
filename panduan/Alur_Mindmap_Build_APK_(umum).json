@@ -26,9 +26,9 @@
     "    - Simpan aturan ProGuard model data agar field JSON/cloud tetap aman saat minifikasi",
     "    - Bangun APK rilis lalu verifikasi tanda tangan apksigner dan SHA-256 checksum",
     "  - 5. Otomasi GitHub Release, Keamanan & Iterasi",
-    "    - Simpan keystore, password, & google-services.json hanya di GitHub Secrets (bukan di repo)",
+    "    - Kemas keystore & kredensial ke kontainer VeraCrypt (.hc) di secret/ (masuk .gitignore, lokal AI Studio) + GitHub Secrets",
     "    - Jalankan GitHub Actions untuk mengunggah APK, CHECKSUMS, & CERT_FINGERPRINT ke GitHub Releases",
-    "    - Pusat seluruh panduan & keterangan rinci hanya di GitHub Pages (tanpa folder APK di repo)",
+    "    - Simpan semua panduan & template di folder panduan/; folder docs/ khusus untuk GitHub Pages",
     "    - Evaluasi UX dari penggunaan nyata & pertahankan arsitektur ringan pada setiap pembaruan"
   ],
   "tree": {
@@ -157,7 +157,7 @@
         "children": [
           {
             "id": "a1b2c3d4-5100-4000-8000-000000000001",
-            "title": "Simpan keystore, password, & google-services.json hanya di GitHub Secrets (bukan di repo)",
+            "title": "Kemas keystore & kredensial ke kontainer VeraCrypt (.hc) di secret/ (masuk .gitignore, lokal AI Studio) + GitHub Secrets",
             "color": "plum"
           },
           {
@@ -167,7 +167,7 @@
           },
           {
             "id": "a1b2c3d4-5300-4000-8000-000000000001",
-            "title": "Pusat seluruh panduan & keterangan rinci hanya di GitHub Pages (tanpa folder APK di repo)",
+            "title": "Simpan semua panduan & template di folder panduan/; folder docs/ khusus untuk GitHub Pages",
             "link": "https://docs.github.com/en/pages",
             "color": "plum"
           },

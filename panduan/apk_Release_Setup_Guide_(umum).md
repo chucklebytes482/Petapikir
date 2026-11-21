@@ -11,7 +11,7 @@ Panduan umum ini menjelaskan cara menyiapkan **keystore release**, mengonfiguras
 
 ## 1. Membuat Keystore Release (Identitas Permanen Aplikasi)
 
-Keystore release adalah tanda tangan kriptografi resmi aplikasi Anda. Jika file ini hilang atau berganti, pembaruan APK tidak dapat dipasang menimpa versi sebelumnya. **Simpan file `.jks` dan password-nya di pengelola sandi aman, JANGAN pernah mengunggahnya ke Git.**
+Keystore release adalah tanda tangan kriptografi resmi aplikasi Anda. Jika file ini hilang atau berganti, pembaruan APK tidak dapat dipasang menimpa versi sebelumnya. **Simpan file `.jks`, panduan secret, dan password-nya di dalam kontainer terenkripsi VeraCrypt (`.hc`)** (mis. `secret/<slug_app>_secrets.hc`, dibuka di HP menggunakan **Vault Explorer** dari F-Droid, dan diabaikan penuh di `.gitignore` agar hanya ada lokal di AI Studio — **JANGAN pernah mengunggahnya ke GitHub**).
 
 Jalankan perintah berikut di terminal (di luar folder repositori Git):
 
@@ -99,6 +99,10 @@ releases/
 *.aab
 logs_*.zip
 public/assets/aistudio/
+
+# Folder secret & kontainer VeraCrypt (.hc): hanya lokal di AI Studio, jangan pernah push ke GitHub
+secret/
+*.hc
 ```
 
 ---
@@ -221,7 +225,7 @@ Salin baris **SHA1** dan **SHA256**, lalu daftarkan ke:
 ## 6. Workflow GitHub Actions Siap Salin (`.github/workflows/release.yml`)
 
 Simpan file berikut sebagai `.github/workflows/release.yml`. Workflow ini:
-1. Berjalan otomatis setiap `push` ke `main`/`master` **hanya saat ada perubahan berkas aplikasi** (`app/**`, `gradle/**`, konfigurasi Gradle, atau file workflow itu sendiri — sehingga perubahan dokumentasi di `docs/**` tidak memicu rilis kosong), serta tetap mendukung pemicu manual lewat **Run workflow** (`workflow_dispatch`).
+1. Berjalan otomatis setiap `push` ke `main`/`master` **hanya saat ada perubahan berkas aplikasi** (`app/**`, `gradle/**`, konfigurasi Gradle, atau file workflow itu sendiri — sehingga perubahan panduan di `panduan/**` maupun halaman GitHub Pages di `docs/**` tidak memicu rilis kosong), serta tetap mendukung pemicu manual lewat **Run workflow** (`workflow_dispatch`).
 2. Menghitung `versionCode` dan `versionName` otomatis dari `baseVersionCode` / `baseVersionName`, `GITHUB_RUN_NUMBER`, dan tag versi terakhir agar selalu meningkat dan aman menimpa pemasangan sebelumnya.
 3. Mendekode `RELEASE_KEYSTORE_BASE64` dan `GOOGLE_SERVICES_JSON_BASE64` (opsional bila tidak memakai Firebase) di runner sementara.
 4. Menjalankan Unit Test & Robolectric (`gradle :app:testDebugUnitTest`).
