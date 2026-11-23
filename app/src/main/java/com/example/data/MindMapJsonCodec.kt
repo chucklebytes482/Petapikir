@@ -5,37 +5,12 @@ import com.example.model.MindMapNode
 import com.example.model.NodeColor
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
 import java.util.UUID
-
-data class DriveFileMetadata(
-    val id: String,
-    val name: String = "",
-    val mimeType: String = "",
-    val modifiedTime: String? = null,
-    val appProperties: Map<String, String>? = null,
-    val ownedByMe: Boolean = true,
-    val shared: Boolean = false,
-    val ownerDisplayName: String? = null,
-    val shortcutTargetId: String? = null,
-    val shortcutTargetMimeType: String? = null
-)
-
-data class DriveFileListResponse(
-    val files: List<DriveFileMetadata> = emptyList()
-)
-
-data class GoogleUserInfo(
-    val email: String? = null,
-    val name: String? = null
-)
 
 /**
  * Zero-dependency JSON codec backed by Android's built-in org.json.
  * Outputs pretty-printed, AI-friendly JSON containing both human/LLM-readable
- * `outline` + nested `tree` representations and lossless flat `nodes` for sync.
+ * `outline` + nested `tree` representations and lossless flat `nodes` for local backup & import.
  */
 class MindMapJsonCodec {
 
@@ -187,85 +162,4 @@ class MindMapJsonCodec {
             schemaVersion = obj.optInt("schemaVersion", 1)
         )
     }.getOrNull()
-
-    fun decodeDriveFileList(json: String): DriveFileListResponse? = runCatching {
-        val obj = JSONObject(json)
-        val arr = obj.optJSONArray("files") ?: JSONArray()
-        val files = buildList(arr.length()) {
-            for (i in 0 until arr.length()) {
-                parseDriveFileObject(arr.getJSONObject(i))?.let(::add)
-            }
-        }
-        DriveFileListResponse(files = files)
-    }.getOrNull()
-
-    fun decodeDriveFile(json: String): DriveFileMetadata? = runCatching {
-        parseDriveFileObject(JSONObject(json))
-    }.getOrNull()
-
-    fun decodeUserInfo(json: String): GoogleUserInfo? = runCatching {
-        val obj = JSONObject(json)
-        GoogleUserInfo(
-            email = if (obj.has("email") && !obj.isNull("email")) obj.optString("email") else null,
-            name = if (obj.has("name") && !obj.isNull("name")) obj.optString("name") else null
-        )
-    }.getOrNull()
-
-    private fun parseDriveFileObject(obj: JSONObject): DriveFileMetadata? {
-        val id = obj.optString("id", "")
-        if (id.isBlank()) return null
-        val propsObj = obj.optJSONObject("appProperties")
-        val props = if (propsObj != null) {
-            buildMap<String, String> {
-                val keys = propsObj.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    put(key, propsObj.optString(key))
-                }
-            }
-        } else {
-            null
-        }
-        val ownersArr = obj.optJSONArray("owners")
-        val firstOwner = ownersArr?.optJSONObject(0)
-        val ownerName = firstOwner?.optString("displayName", "")
-            ?.ifBlank { firstOwner.optString("emailAddress", "") }
-            ?.takeIf { it.isNotBlank() }
-
-        val shortcutObj = obj.optJSONObject("shortcutDetails")
-        val targetId = shortcutObj?.optString("targetId", "")?.takeIf { it.isNotBlank() }
-        val targetMime = shortcutObj?.optString("targetMimeType", "")?.takeIf { it.isNotBlank() }
-
-        return DriveFileMetadata(
-            id = id,
-            name = obj.optString("name", ""),
-            mimeType = obj.optString("mimeType", ""),
-            modifiedTime = if (obj.has("modifiedTime") && !obj.isNull("modifiedTime")) obj.optString("modifiedTime") else null,
-            appProperties = props,
-            ownedByMe = obj.optBoolean("ownedByMe", true),
-            shared = obj.optBoolean("shared", false),
-            ownerDisplayName = ownerName,
-            shortcutTargetId = targetId,
-            shortcutTargetMimeType = targetMime
-        )
-    }
-
-    companion object {
-        fun parseIso8601Millis(iso: String?): Long {
-            if (iso.isNullOrBlank()) return 0L
-            val patterns = arrayOf(
-                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-                "yyyy-MM-dd'T'HH:mm:ss'Z'"
-            )
-            for (pattern in patterns) {
-                val parsed = runCatching {
-                    SimpleDateFormat(pattern, Locale.US).apply {
-                        timeZone = TimeZone.getTimeZone("UTC")
-                    }.parse(iso)?.time
-                }.getOrNull()
-                if (parsed != null) return parsed
-            }
-            return 0L
-        }
-    }
 }

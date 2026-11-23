@@ -60,41 +60,34 @@
   <main>
     <article class="card">
       <h1>Privacy Policy for PetaPikir</h1>
-      <p class="meta">Effective Date: November 16, 2026 · Package: <code>com.aistudio.petapikir.krmxvp</code></p>
+      <p class="meta">Effective Date: November 23, 2026 · Package: <code>com.aistudio.petapikir.krmxvp</code></p>
 
       <p>
-        PetaPikir ("the App") is a mind-mapping application for Android. This Privacy Policy explains how the App
-        handles your information when you use local storage and optional Google Drive synchronization.
+        PetaPikir ("the App") is a 100% offline mind-mapping application for Android. This Privacy Policy explains how
+        the App stores and protects your data exclusively on your device.
       </p>
 
-      <h2>1. Information We Access</h2>
+      <h2>1. Zero Data Collection &amp; Zero Network Permissions</h2>
       <ul>
-        <li><strong>Mind Map Content:</strong> Titles, node text, notes, colors, and tree structure that you create in the App.</li>
-        <li><strong>Google Account &amp; Drive Access (Optional):</strong> If you tap <em>Hubungkan Drive</em> (Connect Drive), PetaPikir requests OAuth access using the <code>https://www.googleapis.com/auth/drive</code> scope solely to locate, read, and sync your <code>PetaPikir</code> folder (including shared <code>PetaPikir</code> folders for collaboration between Google Drive users), and retrieves your Google account email address via Google Drive's <code>about</code> endpoint solely to display which account is connected.</li>
+        <li>PetaPikir does <strong>not</strong> request <code>INTERNET</code> or network permissions.</li>
+        <li>PetaPikir does <strong>not</strong> require sign-in, accounts, analytics, tracking, or advertisements.</li>
+        <li>All mind map titles, nodes, links, and colors remain strictly on your local Android device.</li>
       </ul>
 
-      <h2>2. How Your Data Is Used</h2>
+      <h2>2. On-Device Storage &amp; Automatic Local Backup</h2>
       <ul>
-        <li>Your mind maps are stored locally on your device using an on-device database so you can work offline.</li>
-        <li>When Google Drive sync is enabled, your mind map JSON files are stored in a single <code>PetaPikir</code> folder in Google Drive and synchronized two ways across your devices and collaborators who share that folder.</li>
-        <li>PetaPikir does <strong>not</strong> process unrelated files in your Google Drive, does <strong>not</strong> display ads, and does <strong>not</strong> sell, rent, or transfer your data to third parties or external developer servers.</li>
+        <li>Your mind maps are saved in an on-device Room database for fast offline editing.</li>
+        <li>Every create, edit, and delete is automatically backed up as plain JSON files to your device's <code>/storage/emulated/0/Documents/</code> directory by default (without creating any automatic subfolder), or to any subfolder inside <code>/storage/emulated/0/Documents/</code> that you choose via Android's Storage Access Framework or relative path settings.</li>
+        <li>PetaPikir never requests broad all-files storage permissions (such as <code>MANAGE_EXTERNAL_STORAGE</code>).</li>
       </ul>
 
       <h2>3. Data Retention &amp; Deletion</h2>
       <ul>
-        <li>You can delete any mind map inside the App or directly from the <code>PetaPikir</code> folder in your Google Drive at any time.</li>
-        <li>You can disconnect your Google account at any time inside the App using <em>Putuskan Akun</em>, or revoke PetaPikir's permissions from your Google Account Security settings at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
-        <li>Uninstalling the App removes local on-device data; files already synced to your Google Drive remain in your Drive until you delete them.</li>
+        <li>You have full control over your local JSON backup files inside <code>/storage/emulated/0/Documents/</code> and can move, copy, or delete them using any file manager at any time.</li>
+        <li>Uninstalling the App removes its internal database while preserving any JSON backups already saved in your Documents directory.</li>
       </ul>
 
-      <h2>4. Limited Use Disclosure</h2>
-      <p>
-        PetaPikir's use and transfer to any other app of information received from Google APIs will adhere to the
-        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
-        including the Limited Use requirements.
-      </p>
-
-      <h2>5. Contact Us</h2>
+      <h2>4. Contact Us</h2>
       <p>
         If you have any questions about this Privacy Policy, please contact:
         <a href="mailto:chucklebytes482@gmail.com">chucklebytes482@gmail.com</a>

@@ -74,10 +74,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
-import com.example.data.GlobalSyncStatus
+import com.example.backup.BackupSettings
+import com.example.data.LocalBackupStatus
 import com.example.data.MindMapSummary
 import com.example.model.SyncState
-import com.example.sync.SyncSettings
 import com.example.ui.icons.AppIcons
 import com.example.ui.theme.BrandSage
 import com.example.ui.theme.DarkBrandSage
@@ -92,15 +92,15 @@ import java.util.Locale
 fun MindMapLibraryScreen(
     summaries: List<MindMapSummary>,
     searchQuery: String,
-    syncStatus: GlobalSyncStatus,
-    syncSettings: SyncSettings,
+    backupStatus: LocalBackupStatus,
+    backupSettings: BackupSettings,
     onSearchQueryChange: (String) -> Unit,
     onOpenMap: (String) -> Unit,
     onCreateNewMap: (String) -> Unit,
     onCreateSampleMap: () -> Unit,
     onDuplicateMap: (String) -> Unit,
     onDeleteMap: (String) -> Unit,
-    onOpenSyncSheet: () -> Unit,
+    onOpenBackupSheet: () -> Unit,
     onOpenWebGuide: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -177,19 +177,19 @@ fun MindMapLibraryScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Priority #1: Kartu Status Akun (Google Drive)
+                // Priority #1: Kartu Status Pencadangan Lokal Otomatis
                 item(
-                    key = "home_drive_status_card",
+                    key = "home_backup_status_card",
                     span = { GridItemSpan(maxLineSpan) }
                 ) {
                     Box(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        DriveAccountStatusCard(
-                            syncSettings = syncSettings,
-                            syncStatus = syncStatus,
-                            onClick = onOpenSyncSheet,
+                        LocalBackupStatusCard(
+                            backupSettings = backupSettings,
+                            backupStatus = backupStatus,
+                            onClick = onOpenBackupSheet,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .widthIn(max = 640.dp)
@@ -238,7 +238,12 @@ fun MindMapLibraryScreen(
                                 },
                                 trailingIcon = {
                                     if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { onSearchQueryChange("") }) {
+                                        IconButton(
+                                            onClick = { onSearchQueryChange("") },
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .testTag("clear_search_button")
+                                        ) {
                                             Icon(Icons.Rounded.Clear, contentDescription = "Bersihkan pencarian")
                                         }
                                     }
@@ -317,27 +322,25 @@ fun MindMapLibraryScreen(
 }
 
 @Composable
-private fun DriveAccountStatusCard(
-    syncSettings: SyncSettings,
-    syncStatus: GlobalSyncStatus,
+private fun LocalBackupStatusCard(
+    backupSettings: BackupSettings,
+    backupStatus: LocalBackupStatus,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
     val sageColor = if (isDark) DarkBrandSage else BrandSage
-    val amberColor = if (isDark) SyncAmberDark else SyncAmber
 
-    val accentColor = when {
-        !syncSettings.isDriveConnected -> MaterialTheme.colorScheme.primary
-        syncStatus is GlobalSyncStatus.Error -> MaterialTheme.colorScheme.error
-        syncStatus is GlobalSyncStatus.OfflineQueued || syncStatus is GlobalSyncStatus.NeedsAuth -> amberColor
+    val accentColor = when (backupStatus) {
+        is LocalBackupStatus.Error -> MaterialTheme.colorScheme.error
+        is LocalBackupStatus.BackingUp -> MaterialTheme.colorScheme.primary
         else -> sageColor
     }
 
-    val subtitleText = if (syncSettings.isDriveConnected) {
-        syncSettings.connectedEmail ?: stringResource(R.string.home_drive_connected)
-    } else {
-        stringResource(R.string.home_drive_not_connected)
+    val subtitleText = when (backupStatus) {
+        is LocalBackupStatus.BackingUp -> stringResource(R.string.backup_status_backing_up)
+        is LocalBackupStatus.Error -> backupStatus.message
+        else -> backupSettings.displayPath
     }
 
     Surface(
@@ -345,7 +348,7 @@ private fun DriveAccountStatusCard(
             .defaultMinSize(minHeight = 64.dp)
             .clip(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
-            .testTag("home_drive_status_card"),
+            .testTag("home_backup_status_card"),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
@@ -365,7 +368,7 @@ private fun DriveAccountStatusCard(
                     .background(accentColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
-                if (syncStatus is GlobalSyncStatus.Syncing) {
+                if (backupStatus is LocalBackupStatus.BackingUp) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.2.dp,
@@ -373,8 +376,8 @@ private fun DriveAccountStatusCard(
                     )
                 } else {
                     Icon(
-                        imageVector = if (syncSettings.isDriveConnected) AppIcons.CloudDone else AppIcons.CloudOff,
-                        contentDescription = stringResource(R.string.home_drive_card_title),
+                        imageVector = AppIcons.FolderBackup,
+                        contentDescription = stringResource(R.string.home_backup_card_title),
                         tint = accentColor,
                         modifier = Modifier.size(22.dp)
                     )
@@ -383,7 +386,7 @@ private fun DriveAccountStatusCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.home_drive_card_title),
+                    text = stringResource(R.string.home_backup_card_title),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
@@ -392,7 +395,7 @@ private fun DriveAccountStatusCard(
                 Text(
                     text = subtitleText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (syncSettings.isDriveConnected) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (backupStatus is LocalBackupStatus.Error) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -549,8 +552,8 @@ private fun MindMapCard(
                         )
                     }
 
-                    val (syncLabel, syncColor) = when (summary.syncState) {
-                        SyncState.SYNCED -> "Tersinkron" to sage
+                    val (backupLabel, backupColor) = when (summary.backupState) {
+                        SyncState.SYNCED -> "Tercadang" to sage
                         SyncState.PENDING_UPLOAD -> "Antre" to amber
                         SyncState.LOCAL_ONLY -> "Lokal" to MaterialTheme.colorScheme.onSurfaceVariant
                     }
@@ -562,12 +565,12 @@ private fun MindMapCard(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(syncColor)
+                                .background(backupColor)
                         )
                         Text(
-                            text = syncLabel,
+                            text = backupLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = syncColor
+                            color = backupColor
                         )
                     }
 

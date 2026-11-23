@@ -1,0 +1,70 @@
+name: Sync Public GitHub Pages Docs (Dual Repo)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'docs/**'
+      - '.github/workflows/sync-docs-public.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-docs-public-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync-docs:
+    name: Sync docs/ to Public Repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Private/Source Repository
+        uses: actions/checkout@v4
+
+      - name: Sync Only docs/ to PUBLIC_REPO
+        shell: bash
+        env:
+          PUBLIC_REPO: ${{ secrets.PUBLIC_REPO }}
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          CLEAN_PUBLIC_REPO=$(printf '%s' "${PUBLIC_REPO:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          CLEAN_TOKEN=$(printf '%s' "${PUBLIC_REPO_TOKEN:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+          if [ -z "$CLEAN_PUBLIC_REPO" ] || [ -z "$CLEAN_TOKEN" ]; then
+            echo "::notice::Mode Single Repo aktif (PUBLIC_REPO atau PUBLIC_REPO_TOKEN belum disetel). Sinkronisasi docs/ ke repo publik dilewati."
+            exit 0
+          fi
+
+          if [ "$CLEAN_PUBLIC_REPO" = "$GITHUB_REPOSITORY" ]; then
+            echo "::notice::PUBLIC_REPO sama dengan repositori saat ini ($GITHUB_REPOSITORY). Tidak perlu sinkronisasi lintas repo."
+            exit 0
+          fi
+
+          TARGET_DIR="$RUNNER_TEMP/public-repo"
+          rm -rf "$TARGET_DIR"
+          AUTH_B64=$(printf 'x-access-token:%s' "$CLEAN_TOKEN" | base64 | tr -d '\r\n')
+
+          git -c "http.extraheader=AUTHORIZATION: basic ${AUTH_B64}" \
+            clone --depth 1 "https://github.com/${CLEAN_PUBLIC_REPO}.git" "$TARGET_DIR"
+
+          mkdir -p "$TARGET_DIR/docs"
+          rsync -a --delete docs/ "$TARGET_DIR/docs/"
+
+          cd "$TARGET_DIR"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git status --porcelain docs/ | grep -q .; then
+            git add docs/
+            git commit -m "chore(docs): sync GitHub Pages from source repo"
+            git -c "http.extraheader=AUTHORIZATION: basic ${AUTH_B64}" push origin HEAD
+            echo "Sinkronisasi docs/ ke ${CLEAN_PUBLIC_REPO} berhasil."
+          else
+            echo "Tidak ada perubahan pada docs/ di ${CLEAN_PUBLIC_REPO}."
+          fi

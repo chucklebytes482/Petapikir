@@ -1,11 +1,12 @@
 package com.example.ui
 
-import android.app.Activity
 import android.app.Application
-import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.GlobalSyncStatus
+import com.example.backup.AndroidLocalBackupManager
+import com.example.backup.BackupPreferences
+import com.example.backup.BackupSettings
+import com.example.data.LocalBackupStatus
 import com.example.data.MindMapJsonCodec
 import com.example.data.MindMapRepository
 import com.example.data.MindMapSummary
@@ -15,11 +16,6 @@ import com.example.layout.RadiantLayoutResult
 import com.example.model.MindMapDocument
 import com.example.model.MindMapNode
 import com.example.model.MindMapTreeOps
-import com.example.sync.DriveAuthResult
-import com.example.sync.GoogleDriveApiClient
-import com.example.sync.GoogleDriveAuthManager
-import com.example.sync.SyncPreferences
-import com.example.sync.SyncSettings
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -33,7 +29,6 @@ import kotlinx.coroutines.launch
 
 sealed class UiEvent {
     data class ShowMessage(val message: String) : UiEvent()
-    data class LaunchIntentSender(val result: DriveAuthResult.NeedsResolution) : UiEvent()
     data object FitCanvasToScreen : UiEvent()
 }
 
@@ -56,12 +51,10 @@ class MindMapViewModel(application: Application) : AndroidViewModel(application)
         val db = AppDatabase.getInstance(application)
         val codec = MindMapJsonCodec()
         MindMapRepository(
-            context = application,
             dao = db.mindMapDao(),
             codec = codec,
-            syncPreferences = SyncPreferences(application),
-            authManager = GoogleDriveAuthManager(application),
-            driveClient = GoogleDriveApiClient(codec)
+            backupPreferences = BackupPreferences(application),
+            backupStorage = AndroidLocalBackupManager(application, codec)
         )
     }
 
@@ -79,13 +72,11 @@ class MindMapViewModel(application: Application) : AndroidViewModel(application)
     private val _events = MutableSharedFlow<UiEvent>()
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
-    val syncStatus: StateFlow<GlobalSyncStatus> = repository.syncStatus
-    val activeFolderInfo: StateFlow<com.example.sync.SyncFolderInfo?> = repository.activeFolderInfo
-    val isOnline: StateFlow<Boolean> = repository.isOnline
-    val syncSettings: StateFlow<SyncSettings> = repository.syncSettings.stateIn(
+    val backupStatus: StateFlow<LocalBackupStatus> = repository.backupStatus
+    val backupSettings: StateFlow<BackupSettings> = repository.backupSettings.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = SyncSettings()
+        initialValue = BackupSettings()
     )
     val pendingCount: StateFlow<Int> = repository.pendingCount.stateIn(
         scope = viewModelScope,
@@ -203,7 +194,7 @@ class MindMapViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val duplicated = repository.duplicateMap(id)
             if (duplicated != null) {
-                _events.emit(UiEvent.ShowMessage("Salinan \"${duplicated.title}\" dibuat."))
+                _events.emit(UiEvent.ShowMessage("Salinan \"${duplicated.title}\" dibuat & dicadangkan."))
             }
         }
     }
@@ -329,85 +320,27 @@ class MindMapViewModel(application: Application) : AndroidViewModel(application)
         return doc.nodes.firstOrNull { it.id == id }
     }
 
-    fun connectGoogleDrive(activity: Activity? = null) {
+    fun selectBackupTreeUri(uriString: String, treeDocumentId: String?) {
         viewModelScope.launch {
-            when (val result = repository.requestDriveConnection(activity)) {
-                is DriveAuthResult.Authorized -> {
-                    _events.emit(UiEvent.ShowMessage("Google Drive terhubung & tersinkron."))
+            repository.updateBackupTreeUri(uriString, treeDocumentId)
+                .onSuccess { displayPath ->
+                    _events.emit(UiEvent.ShowMessage("Jalur cadangan diubah ke $displayPath"))
                 }
-                is DriveAuthResult.NeedsResolution -> {
-                    _events.emit(UiEvent.LaunchIntentSender(result))
+                .onFailure { err ->
+                    _events.emit(UiEvent.ShowMessage(err.message ?: "Folder harus di dalam /storage/emulated/0/Documents/"))
                 }
-                is DriveAuthResult.Failed -> {
-                    _events.emit(UiEvent.ShowMessage(result.message))
-                }
-            }
         }
     }
 
-    fun onAuthIntentResult(activity: Activity? = null, data: Intent?) {
+    fun saveCustomBackupSubPath(rawSubPath: String) {
         viewModelScope.launch {
-            when (val result = repository.handleAuthIntentResult(activity, data)) {
-                is DriveAuthResult.Authorized -> {
-                    _events.emit(UiEvent.ShowMessage("Google Drive terhubung & disinkronkan."))
+            repository.updateBackupSubPath(rawSubPath)
+                .onSuccess { displayPath ->
+                    _events.emit(UiEvent.ShowMessage("Jalur cadangan disimpan: $displayPath"))
                 }
-                is DriveAuthResult.Failed -> {
-                    _events.emit(UiEvent.ShowMessage(result.message))
+                .onFailure { err ->
+                    _events.emit(UiEvent.ShowMessage(err.message ?: "Jalur cadangan tidak valid."))
                 }
-                is DriveAuthResult.NeedsResolution -> {
-                    _events.emit(UiEvent.LaunchIntentSender(result))
-                }
-            }
-        }
-    }
-
-    fun syncNow() {
-        viewModelScope.launch {
-            val statusBefore = repository.syncStatus.value
-            if (statusBefore is GlobalSyncStatus.NeedsAuth && statusBefore.pendingIntent != null) {
-                _events.emit(UiEvent.LaunchIntentSender(DriveAuthResult.NeedsResolution(statusBefore.pendingIntent)))
-                return@launch
-            }
-            val ok = repository.syncNow()
-            if (ok) {
-                val activeId = _activeMapId.value
-                if (activeId != null) {
-                    val refreshed = repository.getDocument(activeId)
-                    if (refreshed == null) {
-                        closeMap()
-                        _events.emit(UiEvent.ShowMessage("Peta pikiran telah dihapus di Google Drive."))
-                        return@launch
-                    } else if (refreshed.updatedAt > (_activeDocument.value?.updatedAt ?: 0L)) {
-                        _activeDocument.value = refreshed
-                    }
-                }
-                _events.emit(UiEvent.ShowMessage("Sinkronisasi 2 arah berhasil."))
-            } else {
-                when (val after = repository.syncStatus.value) {
-                    is GlobalSyncStatus.NeedsAuth -> {
-                        if (after.pendingIntent != null) {
-                            _events.emit(UiEvent.LaunchIntentSender(DriveAuthResult.NeedsResolution(after.pendingIntent)))
-                        }
-                    }
-                    is GlobalSyncStatus.OfflineQueued -> {
-                        _events.emit(UiEvent.ShowMessage("Tidak ada koneksi internet."))
-                    }
-                    is GlobalSyncStatus.NotConnected -> {
-                        _events.emit(UiEvent.ShowMessage("Hubungkan Google Drive terlebih dahulu."))
-                    }
-                    is GlobalSyncStatus.Error -> {
-                        _events.emit(UiEvent.ShowMessage(after.message))
-                    }
-                    else -> Unit
-                }
-            }
-        }
-    }
-
-    fun disconnectDrive() {
-        viewModelScope.launch {
-            repository.disconnectDrive()
-            _events.emit(UiEvent.ShowMessage("Akun Google Drive diputuskan. Data lokal tetap aman."))
         }
     }
 }

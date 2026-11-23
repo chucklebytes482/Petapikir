@@ -24,10 +24,6 @@ android {
     versionName = ciVersionName ?: baseVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-    ndk {
-      abiFilters += listOf("arm64-v8a")
-    }
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -53,6 +49,9 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = true
       isShrinkResources = true
+      ndk {
+        abiFilters += listOf("arm64-v8a")
+      }
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       // Do not remove or modify this signingConfig assignment. It is necessary for Android apps in
       // AI Studio.
@@ -128,7 +127,7 @@ dependencies {
   // implementation(libs.googleid)
   // implementation(libs.firebase.appcheck.recaptcha)
   // implementation(libs.firebase.appcheck.debug)
-  implementation(libs.play.services.auth)
+  // implementation(libs.play.services.auth)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   // implementation(libs.logging.interceptor)

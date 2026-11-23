@@ -139,46 +139,23 @@ class RadiantLayoutAndCodecTest {
     }
 
     @Test
-    fun `drive filename builder produces clean readable json filenames`() {
+    fun `backup filename builder produces clean readable json filenames`() {
         assertEquals(
             "Peta Pikiran Baru.json",
-            com.example.sync.GoogleDriveApiClient.buildDriveFileName("  Peta Pikiran Baru  ")
+            com.example.backup.BackupPathValidator.buildSafeFileName("  Peta Pikiran Baru  ")
         )
         assertEquals(
             "Rencana Q1 Q2.json",
-            com.example.sync.GoogleDriveApiClient.buildDriveFileName("Rencana: Q1/Q2*")
+            com.example.backup.BackupPathValidator.buildSafeFileName("Rencana: Q1/Q2*")
         )
         assertEquals(
             "Peta Pikiran.json",
-            com.example.sync.GoogleDriveApiClient.buildDriveFileName("   ")
+            com.example.backup.BackupPathValidator.buildSafeFileName("   ")
         )
-    }
-
-    @Test
-    fun `drive metadata parser handles iso8601 modifiedTime and shared folder info`() {
-        val ms = com.example.data.MindMapJsonCodec.parseIso8601Millis("2026-11-16T03:50:12.345Z")
-        assertTrue(ms > 0L)
-        val msNoFraction = com.example.data.MindMapJsonCodec.parseIso8601Millis("2026-11-16T03:50:12Z")
-        assertTrue(msNoFraction > 0L)
-
-        val codec = MindMapJsonCodec()
-        val parsed = codec.decodeDriveFile(
-            """
-            {
-              "id": "folder_123",
-              "name": "PetaPikir",
-              "mimeType": "application/vnd.google-apps.folder",
-              "ownedByMe": false,
-              "shared": true,
-              "owners": [{"displayName": "Rekan Tim", "emailAddress": "tim@example.com"}],
-              "shortcutDetails": {"targetId": "target_456", "targetMimeType": "application/vnd.google-apps.folder"}
-            }
-            """.trimIndent()
+        assertEquals(
+            "Ide (abc123).json",
+            com.example.backup.BackupPathValidator.buildSafeFileName("Ide", suffix = "abc123")
         )
-        assertNotNull(parsed)
-        assertEquals(false, parsed!!.ownedByMe)
-        assertEquals("Rekan Tim", parsed.ownerDisplayName)
-        assertEquals("target_456", parsed.shortcutTargetId)
     }
 
     @Test
@@ -313,10 +290,10 @@ class RadiantLayoutAndCodecTest {
 
     @Test
     fun `json codec decodes general build apk guide template cleanly`() {
-        val templateFile = java.io.File("../templates/Alur_Mindmap_Build_APK_(umum).json")
+        val templateFile = java.io.File("../panduan/Alur_Mindmap_Build_APK_(umum).json")
             .takeIf { it.exists() }
-            ?: java.io.File("templates/Alur_Mindmap_Build_APK_(umum).json")
-        assertTrue("Template JSON should exist at ${templateFile.absolutePath}", templateFile.exists())
+            ?: java.io.File("panduan/Alur_Mindmap_Build_APK_(umum).json")
+        assertTrue("Guide JSON should exist at ${templateFile.absolutePath}", templateFile.exists())
 
         val codec = MindMapJsonCodec()
         val decoded = codec.decodeDocument(templateFile.readText())

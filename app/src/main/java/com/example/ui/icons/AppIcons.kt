@@ -15,39 +15,41 @@ import androidx.compose.ui.unit.dp
  */
 object AppIcons {
 
-    val CloudDone: ImageVector by lazy {
+    val FolderBackup: ImageVector by lazy {
         ImageVector.Builder(
-            name = "CloudDone",
+            name = "FolderBackup",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
             viewportHeight = 24f
         ).apply {
-            path(fill = SolidColor(Color.Black), pathFillType = PathFillType.NonZero) {
-                moveTo(19.35f, 10.04f)
-                curveTo(18.67f, 6.59f, 15.64f, 4f, 12f, 4f)
-                curveTo(9.11f, 4f, 6.6f, 5.64f, 5.35f, 8.04f)
-                curveTo(2.34f, 8.36f, 0f, 10.91f, 0f, 14f)
-                curveTo(0f, 17.31f, 2.69f, 20f, 6f, 20f)
+            path(
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round
+            ) {
+                moveTo(3f, 7f)
+                arcTo(2f, 2f, 0f, false, true, 5f, 5f)
+                horizontalLineTo(9.5f)
+                lineTo(11.5f, 7.5f)
                 horizontalLineTo(19f)
-                curveTo(21.76f, 20f, 24f, 17.76f, 24f, 15f)
-                curveTo(24f, 12.36f, 21.95f, 10.22f, 19.35f, 10.04f)
+                arcTo(2f, 2f, 0f, false, true, 21f, 9.5f)
+                verticalLineTo(17.5f)
+                arcTo(2f, 2f, 0f, false, true, 19f, 19.5f)
+                horizontalLineTo(5f)
+                arcTo(2f, 2f, 0f, false, true, 3f, 17.5f)
                 close()
-                moveTo(10f, 17f)
-                lineTo(6.5f, 13.5f)
-                lineTo(7.91f, 12.09f)
-                lineTo(10f, 14.17f)
-                lineTo(15.18f, 9f)
-                lineTo(16.59f, 10.41f)
-                lineTo(10f, 17f)
-                close()
+                moveTo(9f, 13.5f)
+                lineTo(11.2f, 15.7f)
+                lineTo(15.5f, 11.4f)
             }
         }.build()
     }
 
-    val CloudSync: ImageVector by lazy {
+    val FolderOpen: ImageVector by lazy {
         ImageVector.Builder(
-            name = "CloudSync",
+            name = "FolderOpen",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
@@ -59,56 +61,23 @@ object AppIcons {
                 strokeLineCap = StrokeCap.Round,
                 strokeLineJoin = StrokeJoin.Round
             ) {
-                moveTo(6.5f, 18f)
+                moveTo(3f, 7f)
+                arcTo(2f, 2f, 0f, false, true, 5f, 5f)
+                horizontalLineTo(9.2f)
+                lineTo(11f, 7.5f)
                 horizontalLineTo(18f)
-                curveTo(20.5f, 18f, 22f, 16.2f, 22f, 14f)
-                curveTo(22f, 11.9f, 20.5f, 10.2f, 18.4f, 10f)
-                curveTo(17.7f, 6.7f, 14.9f, 4.5f, 11.5f, 4.5f)
-                curveTo(8.3f, 4.5f, 5.7f, 6.6f, 4.9f, 9.6f)
-                curveTo(3.1f, 10.1f, 2f, 11.8f, 2f, 13.8f)
-                curveTo(2f, 16.1f, 3.9f, 18f, 6.5f, 18f)
-                close()
-            }
-            path(
-                stroke = SolidColor(Color.Black),
-                strokeLineWidth = 1.8f,
-                strokeLineCap = StrokeCap.Round,
-                strokeLineJoin = StrokeJoin.Round
-            ) {
-                moveTo(9.5f, 13f)
-                lineTo(12f, 10.5f)
-                lineTo(14.5f, 13f)
-                moveTo(12f, 10.5f)
-                verticalLineTo(15.5f)
-            }
-        }.build()
-    }
-
-    val CloudOff: ImageVector by lazy {
-        ImageVector.Builder(
-            name = "CloudOff",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).apply {
-            path(
-                stroke = SolidColor(Color.Black),
-                strokeLineWidth = 2f,
-                strokeLineCap = StrokeCap.Round,
-                strokeLineJoin = StrokeJoin.Round
-            ) {
-                moveTo(3f, 3f)
-                lineTo(21f, 21f)
-                moveTo(9.5f, 5.2f)
-                curveTo(10.3f, 4.7f, 11.2f, 4.5f, 12.2f, 4.5f)
-                curveTo(15.4f, 4.5f, 18f, 6.8f, 18.6f, 10f)
-                curveTo(20.6f, 10.3f, 22f, 11.9f, 22f, 14f)
-                curveTo(22f, 15.2f, 21.4f, 16.2f, 20.6f, 16.9f)
-                moveTo(16.5f, 18f)
-                horizontalLineTo(6.2f)
-                curveTo(3.8f, 18f, 2f, 16.1f, 2f, 13.8f)
-                curveTo(2f, 11.9f, 3.2f, 10.2f, 5f, 9.7f)
+                arcTo(2f, 2f, 0f, false, true, 20f, 9.5f)
+                verticalLineTo(11f)
+                moveTo(3f, 7f)
+                verticalLineTo(17.5f)
+                arcTo(2f, 2f, 0f, false, false, 5f, 19.5f)
+                horizontalLineTo(18.2f)
+                arcTo(2f, 2f, 0f, false, false, 20.1f, 18.1f)
+                lineTo(21.6f, 13f)
+                arcTo(1.5f, 1.5f, 0f, false, false, 20.15f, 11f)
+                horizontalLineTo(6.5f)
+                arcTo(2f, 2f, 0f, false, false, 4.6f, 12.4f)
+                lineTo(3.2f, 17.5f)
             }
         }.build()
     }

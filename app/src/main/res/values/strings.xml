@@ -1,11 +1,9 @@
 <resources>
     <string name="app_name">PetaPikir</string>
-    <string name="oauth_web_client_id">1000578483438-npe5k5vf36dbo80cjvl5kbn69b6k5qe5.apps.googleusercontent.com</string>
     <string name="web_guide_url">https://chucklebytes482.github.io/petapikir/</string>
 
-    <string name="home_drive_card_title">Google Drive</string>
-    <string name="home_drive_not_connected">Belum terhubung</string>
-    <string name="home_drive_connected">Terhubung</string>
+    <string name="home_backup_card_title">Pencadangan Lokal</string>
+    <string name="home_backup_default_path">/storage/emulated/0/Documents/</string>
     <string name="home_web_guide_title">Web Panduan</string>
     <string name="home_web_guide_subtitle">chucklebytes482.github.io/petapikir</string>
     <string name="search_placeholder">Cari peta pikiran…</string>
@@ -14,16 +12,16 @@
     <string name="create_first_map">Buat Peta Pertama</string>
     <string name="create_sample_map">Muat Contoh</string>
 
-    <string name="drive_connect_cta">Hubungkan Google Drive</string>
-    <string name="drive_sync_now">Sinkronkan</string>
-    <string name="drive_disconnect">Putuskan Akun</string>
-    <string name="drive_sheet_connected_title">Google Drive Terhubung</string>
-    <string name="drive_sheet_disconnected_title">Google Drive</string>
-    <string name="drive_status_not_connected">Belum terhubung</string>
-    <string name="drive_status_syncing">Menyinkronkan…</string>
-    <string name="drive_status_synced">Tersinkronisasi</string>
-    <string name="drive_status_offline">Offline</string>
-    <string name="drive_status_needs_auth">Perlu izin ulang</string>
+    <string name="backup_sheet_title">Pencadangan Lokal Otomatis</string>
+    <string name="backup_sheet_subtitle">Luring penuh • JSON otomatis ke Documents</string>
+    <string name="backup_active_path_label">Jalur aktif</string>
+    <string name="backup_status_ready">Siap mencadangkan otomatis</string>
+    <string name="backup_status_backing_up">Menyimpan cadangan…</string>
+    <string name="backup_status_backed_up">Tercadang otomatis</string>
+    <string name="backup_pick_folder_cta">Pilih Folder di Documents</string>
+    <string name="backup_subpath_label">Subfolder opsional di dalam Documents/</string>
+    <string name="backup_subpath_placeholder">Kosong = langsung di /storage/emulated/0/Documents/</string>
+    <string name="backup_save_path_cta">Simpan Jalur</string>
 
     <string name="editor_hint_unselected">Ketuk node untuk mengedit</string>
     <string name="action_add_child">Cabang</string>

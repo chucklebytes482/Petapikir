@@ -1,16 +1,13 @@
 package com.example
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.DocumentsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -36,9 +33,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.backup.BackupPathValidator
 import com.example.ui.MindMapViewModel
 import com.example.ui.UiEvent
-import com.example.ui.components.DriveSyncBottomSheet
+import com.example.ui.components.LocalBackupBottomSheet
 import com.example.ui.screens.MindMapEditorScreen
 import com.example.ui.screens.MindMapLibraryScreen
 import com.example.ui.theme.PetaPikirTheme
@@ -60,26 +58,33 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun PetaPikirApp(viewModel: MindMapViewModel = viewModel()) {
     val context = LocalContext.current
-    val activity = remember(context) { context.findActivity() }
     val webGuideUrl = stringResource(R.string.web_guide_url)
 
     val summaries by viewModel.filteredSummaries.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val activeMapId by viewModel.activeMapId.collectAsStateWithLifecycle()
     val editorState by viewModel.editorState.collectAsStateWithLifecycle()
-    val syncStatus by viewModel.syncStatus.collectAsStateWithLifecycle()
-    val activeFolderInfo by viewModel.activeFolderInfo.collectAsStateWithLifecycle()
-    val syncSettings by viewModel.syncSettings.collectAsStateWithLifecycle()
+    val backupStatus by viewModel.backupStatus.collectAsStateWithLifecycle()
+    val backupSettings by viewModel.backupSettings.collectAsStateWithLifecycle()
 
-    var showSyncSheet by remember { mutableStateOf(false) }
+    var showBackupSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val uiScope = rememberCoroutineScope()
     val fitTriggerFlow = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
 
-    val authResolutionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { activityResult ->
-        viewModel.onAuthIntentResult(activity, activityResult.data)
+    val documentsFolderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { treeUri ->
+        if (treeUri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    treeUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+            val treeDocId = runCatching { DocumentsContract.getTreeDocumentId(treeUri) }.getOrNull()
+            viewModel.selectBackupTreeUri(treeUri.toString(), treeDocId)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -87,10 +92,6 @@ fun PetaPikirApp(viewModel: MindMapViewModel = viewModel()) {
             when (event) {
                 is UiEvent.ShowMessage -> {
                     snackbarHostState.showSnackbar(event.message)
-                }
-                is UiEvent.LaunchIntentSender -> {
-                    val request = IntentSenderRequest.Builder(event.result.pendingIntent.intentSender).build()
-                    authResolutionLauncher.launch(request)
                 }
                 is UiEvent.FitCanvasToScreen -> {
                     fitTriggerFlow.tryEmit(Unit)
@@ -109,15 +110,15 @@ fun PetaPikirApp(viewModel: MindMapViewModel = viewModel()) {
                 MindMapLibraryScreen(
                     summaries = summaries,
                     searchQuery = searchQuery,
-                    syncStatus = syncStatus,
-                    syncSettings = syncSettings,
+                    backupStatus = backupStatus,
+                    backupSettings = backupSettings,
                     onSearchQueryChange = viewModel::updateSearchQuery,
                     onOpenMap = viewModel::openMap,
                     onCreateNewMap = viewModel::createNewMap,
                     onCreateSampleMap = viewModel::createSampleMap,
                     onDuplicateMap = viewModel::duplicateMap,
                     onDeleteMap = viewModel::deleteMap,
-                    onOpenSyncSheet = { showSyncSheet = true },
+                    onOpenBackupSheet = { showBackupSheet = true },
                     onOpenWebGuide = {
                         val opened = runCatching {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webGuideUrl)))
@@ -157,27 +158,19 @@ fun PetaPikirApp(viewModel: MindMapViewModel = viewModel()) {
         )
     }
 
-    if (showSyncSheet) {
-        DriveSyncBottomSheet(
-            syncSettings = syncSettings,
-            syncStatus = syncStatus,
-            activeFolderInfo = activeFolderInfo,
-            onDismiss = { showSyncSheet = false },
-            onConnectDrive = {
-                showSyncSheet = false
-                viewModel.connectGoogleDrive(activity)
+    if (showBackupSheet) {
+        LocalBackupBottomSheet(
+            backupSettings = backupSettings,
+            backupStatus = backupStatus,
+            onDismiss = { showBackupSheet = false },
+            onPickDocumentsFolder = {
+                val initialDocumentsUri = DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    BackupPathValidator.PRIMARY_DOCUMENTS_TREE_ID
+                )
+                documentsFolderPickerLauncher.launch(initialDocumentsUri)
             },
-            onSyncNow = viewModel::syncNow,
-            onDisconnect = {
-                showSyncSheet = false
-                viewModel.disconnectDrive()
-            }
+            onSaveSubPath = viewModel::saveCustomBackupSubPath
         )
     }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
