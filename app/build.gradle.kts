@@ -1,4 +1,10 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.io.File
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.process.CommandLineArgumentProvider
 
 plugins {
   alias(libs.plugins.android.application)
@@ -6,6 +12,17 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+}
+
+class RobolectricDepsArgProvider(
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val jars: ConfigurableFileCollection
+) : CommandLineArgumentProvider {
+  override fun asArguments(): Iterable<String> {
+    val dir = jars.files.firstOrNull { it.extension == "jar" }?.parentFile ?: return emptyList()
+    return listOf("-Drobolectric.offline=true", "-Drobolectric.dependency.dir=${dir.absolutePath}")
+  }
 }
 
 android {
@@ -71,7 +88,27 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests.isIncludeAndroidResources = true
+    unitTests.all { test ->
+      val rel = ".m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/android-all-instrumented-16-robolectric-13921718-i7.jar"
+      val jar = listOfNotNull(
+          "${System.getProperty("user.home")}/$rel",
+          "/home/appuser/$rel",
+          System.getenv("HOME")?.let { "$it/$rel" }
+      ).map(::File).firstOrNull { it.exists() && it.length() > 0L }
+      if (jar != null) {
+        test.systemProperty("robolectric.offline", "true")
+        test.systemProperty("robolectric.dependency.dir", jar.parentFile.absolutePath)
+      } else {
+        test.jvmArgumentProviders.add(
+            RobolectricDepsArgProvider(
+                objects.fileCollection().from(configurations.getByName("robolectricSdk"))
+            )
+        )
+      }
+    }
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
@@ -87,6 +124,8 @@ secrets {
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
+
+val robolectricSdk = configurations.create("robolectricSdk") { isTransitive = false }
 
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
@@ -150,4 +189,5 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   // "ksp"(libs.moshi.kotlin.codegen)
+  "robolectricSdk"("org.robolectric:android-all-instrumented:16-robolectric-13921718-i7")
 }

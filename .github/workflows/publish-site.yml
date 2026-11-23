@@ -1,0 +1,46 @@
+name: Publish Public Site
+on:
+  push:
+    branches: [main, master]
+    paths: ['docs/**', '.github/workflows/publish-site.yml']
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency: { group: publish-site-${{ github.ref }}, cancel-in-progress: false }
+env:
+  PUBLIC_SITE_REPO: "chucklebytes482/petapikir-site"
+
+jobs:
+  publish-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync docs to Public Site (Preserving Release Meta)
+        env:
+          PUBLIC_DIST_TOKEN: ${{ secrets.PUBLIC_DIST_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "$PUBLIC_DIST_TOKEN" ] || { echo "PUBLIC_DIST_TOKEN belum diatur; lewati sinkronisasi situs."; exit 0; }
+          W="$RUNNER_TEMP/site"; rm -rf "$W"
+          H="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUBLIC_DIST_TOKEN" | base64 | tr -d '\n')"
+          U="https://github.com/${PUBLIC_SITE_REPO}.git"
+          if git -c http.extraheader="$H" ls-remote --exit-code --heads "$U" main >/dev/null 2>&1; then
+            git -c http.extraheader="$H" clone --depth 1 --branch main "$U" "$W"
+          else
+            mkdir -p "$W" && git init -b main "$W" && git -C "$W" remote add origin "$U"
+          fi
+          PREV_META=""
+          if [ -f "$W/index.html" ]; then
+            PREV_META=$(grep -oE '<!-- RELEASE_UPDATED_META -->.*<!-- /RELEASE_UPDATED_META -->' "$W/index.html" | head -n1 || true)
+          fi
+          find "$W" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -R docs/. "$W/"
+          if [ -n "$PREV_META" ] && [ -f "$W/index.html" ]; then
+            TARGET_INDEX="$W/index.html" META_VALUE="$PREV_META" python3 -c 'import os, re, pathlib; p = pathlib.Path(os.environ["TARGET_INDEX"]); txt = p.read_text(encoding="utf-8"); meta = os.environ["META_VALUE"]; p.write_text(re.sub(r"<!-- RELEASE_UPDATED_META -->.*?<!-- /RELEASE_UPDATED_META -->", lambda _: meta, txt, flags=re.S), encoding="utf-8")'
+          fi
+          touch "$W/.nojekyll"
+          git -C "$W" config user.name "github-actions[bot]"
+          git -C "$W" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$W" add -A
+          git -C "$W" diff --cached --quiet || { git -C "$W" commit -m "docs: sync public site"; git -C "$W" -c http.extraheader="$H" push -u origin main; }
+      - if: always()
+        run: rm -rf "$RUNNER_TEMP/site"

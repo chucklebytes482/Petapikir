@@ -1,214 +1,115 @@
-name: Build & Publish Android Release (Dual Repo)
-
+name: Build & Publish Android Release
 on:
   push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'app/**'
-      - 'gradle/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'gradle.properties'
-      - '.env.example'
-      - '.github/workflows/release.yml'
+    branches: [main, master]
+    paths: ['app/**', 'gradle/**', 'build.gradle.kts', 'settings.gradle.kts', 'gradle.properties', '.github/workflows/release.yml']
   workflow_dispatch:
-
-permissions:
-  contents: write
-
-concurrency:
-  group: android-release-${{ github.ref }}
-  cancel-in-progress: false
-
+permissions: { contents: write }
+concurrency: { group: android-release-${{ github.ref }}, cancel-in-progress: false }
 env:
   APP_SLUG: "petapikir"
   APP_DISPLAY_NAME: "PetaPikir"
+  PUBLIC_SITE_REPO: "chucklebytes482/petapikir-site"
 
 jobs:
   build-release:
-    name: Build R8 arm64-v8a APK & Publish Release
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Resolve Target Repo & Compute Automatic Version
-        shell: bash
-        env:
-          PUBLIC_REPO: ${{ secrets.PUBLIC_REPO }}
-          RELEASE_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - name: Compute Version
         run: |
           set -euo pipefail
-          CLEAN_PUBLIC_REPO=$(printf '%s' "${PUBLIC_REPO:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          TARGET_REPO="${CLEAN_PUBLIC_REPO:-$GITHUB_REPOSITORY}"
-          echo "TARGET_REPO=${TARGET_REPO}" >> "$GITHUB_ENV"
-
-          BASE_CODE=$(grep -E 'baseVersionCode\s*=' app/build.gradle.kts | head -n1 | sed -E 's/[^0-9]*([0-9]+).*/\1/')
-          BASE_NAME=$(grep -E 'baseVersionName\s*=' app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
-          BASE_CODE="${BASE_CODE:-1}"
-          BASE_NAME="${BASE_NAME:-1.0}"
-          RUN_NUM="${GITHUB_RUN_NUMBER:-1}"
-
-          ESCAPED_BASE=$(printf '%s' "$BASE_NAME" | sed 's/\./\\./g')
-          AUTH_B64=$(printf 'x-access-token:%s' "$RELEASE_TOKEN" | base64 | tr -d '\r\n')
-          MAX_TAG_NUM=$(git -c "http.extraheader=AUTHORIZATION: basic ${AUTH_B64}" \
-            ls-remote --tags "https://github.com/${TARGET_REPO}.git" "refs/tags/v${BASE_NAME}.*" 2>/dev/null \
-            | sed -nE "s|.*refs/tags/v${ESCAPED_BASE}\.([0-9]+)$|\1|p" \
-            | sort -n \
-            | tail -n 1 || true)
-          MAX_TAG_NUM="${MAX_TAG_NUM:-0}"
-
-          if [ "$RUN_NUM" -le "$MAX_TAG_NUM" ]; then
-            NEXT_NUM=$((MAX_TAG_NUM + 1))
-          else
-            NEXT_NUM="$RUN_NUM"
-          fi
-
-          CI_VERSION_CODE=$((BASE_CODE + NEXT_NUM))
-          CI_VERSION_NAME="${BASE_NAME}.${NEXT_NUM}"
-          VERSION_TAG="v${CI_VERSION_NAME}"
-
-          echo "CI_VERSION_CODE=${CI_VERSION_CODE}" >> "$GITHUB_ENV"
-          echo "CI_VERSION_NAME=${CI_VERSION_NAME}" >> "$GITHUB_ENV"
-          echo "VERSION_TAG=${VERSION_TAG}" >> "$GITHUB_ENV"
-          echo "Target release repo: ${TARGET_REPO}"
-          echo "Release version: ${VERSION_TAG} (versionCode=${CI_VERSION_CODE})"
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
+          BC=$(grep -E 'baseVersionCode\s*=' app/build.gradle.kts | head -n1 | sed -E 's/[^0-9]*([0-9]+).*/\1/'); BC="${BC:-1}"
+          BN=$(grep -E 'baseVersionName\s*=' app/build.gradle.kts | head -n1 | sed -E 's/.*"([^"]+)".*/\1/'); BN="${BN:-1.0}"
+          ESC=$(printf '%s' "$BN" | sed 's/\./\\./g')
+          MAX=$(git ls-remote --tags origin "refs/tags/v${BN}.*" 2>/dev/null | sed -nE "s|.*refs/tags/v${ESC}\.([0-9]+)$|\1|p" | sort -n | tail -n1 || true)
+          N=$(( ${GITHUB_RUN_NUMBER:-1} > ${MAX:-0} ? ${GITHUB_RUN_NUMBER:-1} : ${MAX:-0} + 1 ))
+          { echo "CI_VERSION_CODE=$((BC+N))"; echo "CI_VERSION_NAME=${BN}.${N}"; echo "VERSION_TAG=v${BN}.${N}"; } >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
       - name: Set up Android SDK
-        shell: bash
         run: |
-          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          SDKMANAGER=$(find "$SDK_DIR/cmdline-tools" -name sdkmanager -type f 2>/dev/null | sort -V | tail -n 1)
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager not found under $SDK_DIR/cmdline-tools" >&2
-            exit 1
-          fi
-          (yes || true) | "$SDKMANAGER" --licenses >/dev/null
-          "$SDKMANAGER" "platform-tools" "platforms;android-36" "platforms;android-36.1" "build-tools;36.0.0"
-          echo "ANDROID_HOME=$SDK_DIR" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> "$GITHUB_ENV"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Prepare Release Keystore
-        shell: bash
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SM=$(find "$SDK/cmdline-tools" -name sdkmanager -type f | sort -V | tail -n1)
+          (yes || true) | "$SM" --licenses >/dev/null
+          "$SM" "platform-tools" "platforms;android-36" "platforms;android-36.1" "build-tools;36.0.0"
+          { echo "ANDROID_HOME=$SDK"; echo "ANDROID_SDK_ROOT=$SDK"; } >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Prepare Keystore
         env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail; umask 077
+          [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ] && tr -d '[:space:]' < debug.keystore.base64 | base64 -d > debug.keystore
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/upload.jks"
+            SP=$(printf '%s' "$STORE_PASSWORD" | tr -d '\r\n' | xargs)
+            KP=$(printf '%s' "${KEY_PASSWORD:-$SP}" | tr -d '\r\n' | xargs)
+            keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$SP" >/dev/null
+          else
+            SP="ci-temp-keystore-pass"; KP="$SP"
+            keytool -genkeypair -keystore "$RUNNER_TEMP/upload.jks" -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass "$SP" -keypass "$KP" -dname "CN=${APP_DISPLAY_NAME}, O=Dev, C=ID" >/dev/null 2>&1
+          fi
+          { echo "KEYSTORE_PATH=$RUNNER_TEMP/upload.jks"; echo "STORE_PASSWORD=$SP"; echo "KEY_PASSWORD=$KP"; } >> "$GITHUB_ENV"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7
+          key: robolectric-sdk-16-13921718-i7
+      - name: Pre-fetch Robolectric JAR
         run: |
           set -euo pipefail
-          umask 077
-          if [ ! -f debug.keystore ]; then
-            if [ -f debug.keystore.base64 ]; then
-              tr -d '[:space:]' < debug.keystore.base64 | base64 -d > debug.keystore
-            else
-              keytool -genkeypair \
-                -keystore debug.keystore \
-                -alias androiddebugkey \
-                -keyalg RSA -keysize 2048 -validity 10000 \
-                -storepass android -keypass android \
-                -dname "CN=Android Debug, O=Android, C=US" >/dev/null 2>&1
-            fi
-          fi
-
-          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
-            if ! printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/upload.jks"; then
-              echo "::error::RELEASE_KEYSTORE_BASE64 tidak valid. Encode ulang file .jks tanpa spasi/baris baru."
-              exit 1
-            fi
-
-            CLEAN_STORE_PASSWORD=$(printf '%s' "$STORE_PASSWORD" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            CLEAN_KEY_PASSWORD=$(printf '%s' "${KEY_PASSWORD:-$CLEAN_STORE_PASSWORD}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-            SRC_ALIAS=$(printf '%s' "${KEY_ALIAS:-}" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-
-            if ! keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$CLEAN_STORE_PASSWORD" >/dev/null 2>&1; then
-              echo "::error::Gagal membuka keystore. Periksa STORE_PASSWORD dan RELEASE_KEYSTORE_BASE64."
-              exit 1
-            fi
-
-            if [ -z "$SRC_ALIAS" ]; then
-              SRC_ALIAS=$(keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$CLEAN_STORE_PASSWORD" 2>/dev/null | awk -F',' '/PrivateKeyEntry/{print $1; exit}' | xargs)
-            fi
-            if [ -n "$SRC_ALIAS" ] && [ "$SRC_ALIAS" != "upload" ]; then
-              keytool -changealias \
-                -keystore "$RUNNER_TEMP/upload.jks" \
-                -alias "$SRC_ALIAS" \
-                -destalias upload \
-                -storepass "$CLEAN_STORE_PASSWORD" \
-                -keypass "$CLEAN_KEY_PASSWORD"
-            fi
-
-            echo "KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
-            echo "STORE_PASSWORD=$CLEAN_STORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$CLEAN_KEY_PASSWORD" >> "$GITHUB_ENV"
-          else
-            TEMP_PASS="ci-temp-keystore-pass"
-            keytool -genkeypair -v \
-              -keystore "$RUNNER_TEMP/upload.jks" \
-              -alias upload \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "$TEMP_PASS" -keypass "$TEMP_PASS" \
-              -dname "CN=${APP_DISPLAY_NAME}, OU=Mobile, O=Developer, L=Jakarta, ST=Jakarta, C=ID"
-            echo "KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
-            echo "STORE_PASSWORD=$TEMP_PASS" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$TEMP_PASS" >> "$GITHUB_ENV"
-          fi
-
-      - name: Run Unit & Robolectric Tests
-        run: gradle :app:testDebugUnitTest --no-daemon --no-build-cache --stacktrace
-
-      - name: Build R8 Minified arm64-v8a APK
-        run: gradle :app:assembleRelease --no-daemon --no-build-cache --stacktrace
-
-      - name: Verify APK Signature & Package Artifacts
-        shell: bash
+          D="$HOME/.m2/repository/org/robolectric/android-all-instrumented/16-robolectric-13921718-i7"; J="$D/android-all-instrumented-16-robolectric-13921718-i7.jar"
+          [ -s "$J" ] && exit 0; mkdir -p "$D"
+          P="org/robolectric/android-all-instrumented/16-robolectric-13921718-i7/android-all-instrumented-16-robolectric-13921718-i7.jar"
+          curl -fLsS --retry 5 --retry-delay 5 --retry-all-errors -o "$J.tmp" "https://maven-central.storage-download.googleapis.com/maven2/$P" \
+            || curl -fLsS --retry 5 --retry-delay 5 --retry-all-errors -o "$J.tmp" "https://repo.maven.apache.org/maven2/$P"
+          mv "$J.tmp" "$J"
+      - run: gradle :app:testDebugUnitTest --no-daemon --no-build-cache --stacktrace
+      - run: gradle :app:assembleRelease --no-daemon --no-build-cache --stacktrace
+      - name: Package & Verify APK
         run: |
-          mkdir -p dist
-          APK_SRC="app/build/outputs/apk/release/app-release.apk"
-          APK_OUT="dist/${APP_SLUG}-${VERSION_TAG}-arm64-v8a-release.apk"
-          cp "$APK_SRC" "$APK_OUT"
-
-          SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1)
-          if [ -z "$APKSIGNER" ]; then
-            echo "apksigner tidak ditemukan di $SDK_DIR/build-tools" >&2
-            exit 1
+          set -euo pipefail; mkdir -p dist
+          V="${APP_SLUG}-${VERSION_TAG}-arm64-v8a-release.apk"; L="${APP_SLUG}-latest-arm64-v8a.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/$V"; cp "dist/$V" "dist/$L"
+          $(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n1) verify --print-certs "dist/$V" > dist/CERT_FINGERPRINT.txt
+          (cd dist && sha256sum "$V" "$L") > dist/CHECKSUMS.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ env.APP_SLUG }}-release-apk", path: "dist/*", retention-days: 7 }
+      - uses: softprops/action-gh-release@v2
+        with: { tag_name: "${{ env.VERSION_TAG }}", name: "${{ env.APP_DISPLAY_NAME }} ${{ env.VERSION_TAG }}", files: "dist/*.apk\ndist/CHECKSUMS.txt\ndist/CERT_FINGERPRINT.txt", generate_release_notes: true }
+      - name: Publish Public Site
+        id: site
+        env: { PUBLIC_DIST_TOKEN: "${{ secrets.PUBLIC_DIST_TOKEN }}" }
+        run: |
+          set -euo pipefail
+          [ -n "$PUBLIC_DIST_TOKEN" ] || { echo "published=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          W="$RUNNER_TEMP/site"; rm -rf "$W"
+          H="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUBLIC_DIST_TOKEN" | base64 | tr -d '\n')"
+          U="https://github.com/${PUBLIC_SITE_REPO}.git"
+          if git -c http.extraheader="$H" ls-remote --exit-code --heads "$U" main >/dev/null 2>&1; then
+            git -c http.extraheader="$H" clone --depth 1 --branch main "$U" "$W"
+          else
+            mkdir -p "$W" && git init -b main "$W" && git -C "$W" remote add origin "$U"
           fi
-          "$APKSIGNER" verify --print-certs "$APK_OUT" | tee dist/CERT_FINGERPRINT.txt
-          sha256sum "$APK_OUT" | tee dist/CHECKSUMS.txt
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APP_SLUG }}-release-apk
-          path: dist/*
-
-      - name: Publish GitHub Release (Dual Repo Supported)
+          find "$W" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +; cp -R docs/. "$W/"
+          STAMP=$(TZ='Asia/Jakarta' date '+%d %b %Y, %H:%M WIB')
+          [ -f "$W/index.html" ] && sed -i -E "s|<!-- RELEASE_UPDATED_META -->.*<!-- /RELEASE_UPDATED_META -->|<!-- RELEASE_UPDATED_META -->Diperbarui: ${VERSION_TAG} • ${STAMP}<!-- /RELEASE_UPDATED_META -->|g" "$W/index.html"
+          touch "$W/.nojekyll"
+          git -C "$W" config user.name "github-actions[bot]"; git -C "$W" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$W" add -A
+          git -C "$W" diff --cached --quiet || { git -C "$W" commit -m "chore: update site (${VERSION_TAG})"; git -C "$W" -c http.extraheader="$H" push -u origin main; }
+          echo "published=true" >> "$GITHUB_OUTPUT"
+      - if: steps.site.outputs.published == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          repository: ${{ env.TARGET_REPO }}
-          token: ${{ secrets.PUBLIC_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          repository: ${{ env.PUBLIC_SITE_REPO }}
+          token: ${{ secrets.PUBLIC_DIST_TOKEN }}
           tag_name: ${{ env.VERSION_TAG }}
-          name: ${{ env.APP_DISPLAY_NAME }} ${{ env.VERSION_TAG }}
-          files: |
-            dist/*.apk
-            dist/CHECKSUMS.txt
-            dist/CERT_FINGERPRINT.txt
-          generate_release_notes: true
-
-      - name: Clean Private Key on Runner
-        if: always()
-        shell: bash
-        run: rm -f "$RUNNER_TEMP/upload.jks"
+          target_commitish: main
+          name: "${{ env.APP_DISPLAY_NAME }} ${{ env.VERSION_TAG }}"
+          files: "dist/${{ env.APP_SLUG }}-latest-arm64-v8a.apk"
+          generate_release_notes: false
+      - if: always()
+        run: rm -rf "$RUNNER_TEMP/upload.jks" "$RUNNER_TEMP/site"

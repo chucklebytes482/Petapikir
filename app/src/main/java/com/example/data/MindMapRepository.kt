@@ -95,7 +95,55 @@ class MindMapRepository(
             } else {
                 _backupStatus.value = LocalBackupStatus.Ready
             }
+            syncFromDeviceOnLaunch()
         }
+    }
+
+    /**
+     * Checks the active device backup directory on app launch and restores missing or newer
+     * mind maps via Last-Write-Wins (by `updatedAt`), while strictly guarding against empty
+     * folders overwriting existing local maps.
+     */
+    suspend fun syncFromDeviceOnLaunch(): Int = backupMutex.withLock {
+        val settings = backupPreferences.settingsFlow.first()
+        val deviceDocs = backupStorage.importDocuments(settings).getOrNull().orEmpty()
+        if (deviceDocs.isEmpty()) {
+            return@withLock 0
+        }
+
+        val localById = dao.getActiveMaps().associateBy { it.id }
+        var restoredCount = 0
+
+        for (deviceDoc in deviceDocs) {
+            val localEntity = localById[deviceDoc.id]
+            val shouldRestore = localEntity == null || deviceDoc.updatedAt > localEntity.updatedAt
+            if (shouldRestore) {
+                val encoded = codec.encodeDocument(deviceDoc)
+                dao.upsert(
+                    MindMapEntity(
+                        id = deviceDoc.id,
+                        title = deviceDoc.title,
+                        nodeCount = deviceDoc.nodes.size,
+                        createdAt = deviceDoc.createdAt,
+                        updatedAt = deviceDoc.updatedAt,
+                        documentJson = encoded,
+                        backupLocation = localEntity?.backupLocation,
+                        lastBackedUpAt = maxOf(deviceDoc.updatedAt, localEntity?.lastBackedUpAt ?: 0L),
+                        backupState = SyncState.SYNCED.name,
+                        isDeleted = false
+                    )
+                )
+                restoredCount++
+            }
+        }
+
+        if (restoredCount > 0) {
+            val now = System.currentTimeMillis()
+            val totalCount = dao.getActiveMaps().size
+            backupPreferences.setLastBackupInfo(now, totalCount)
+            _backupStatus.value = LocalBackupStatus.BackedUp(now, totalCount)
+        }
+        restoredCount
     }
 
     fun observeDocument(id: String): Flow<MindMapDocument?> =

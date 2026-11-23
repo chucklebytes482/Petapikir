@@ -1,18 +1,18 @@
 <resources>
     <string name="app_name">PetaPikir</string>
-    <string name="web_guide_url">https://chucklebytes482.github.io/petapikir/</string>
+    <string name="web_guide_url">https://chucklebytes482.github.io/petapikir-site/</string>
 
-    <string name="home_backup_card_title">Pencadangan Lokal</string>
+    <string name="home_backup_card_title">Cadangan Perangkat</string>
     <string name="home_backup_default_path">/storage/emulated/0/Documents/</string>
     <string name="home_web_guide_title">Web Panduan</string>
-    <string name="home_web_guide_subtitle">chucklebytes482.github.io/petapikir</string>
+    <string name="home_web_guide_subtitle">Panduan &amp; Arti Ikon</string>
     <string name="search_placeholder">Cari peta pikiran…</string>
     <string name="new_map_cta">Peta Baru</string>
     <string name="empty_library_title">Belum ada peta pikiran</string>
     <string name="create_first_map">Buat Peta Pertama</string>
     <string name="create_sample_map">Muat Contoh</string>
 
-    <string name="backup_sheet_title">Pencadangan Lokal Otomatis</string>
+    <string name="backup_sheet_title">Cadangan Perangkat</string>
     <string name="backup_sheet_subtitle">Luring penuh • JSON otomatis ke Documents</string>
     <string name="backup_active_path_label">Jalur aktif</string>
     <string name="backup_status_ready">Siap mencadangkan otomatis</string>

@@ -78,6 +78,8 @@ class HomeAndLocalBackupUiTest {
 
         backupCard.assertIsDisplayed()
         webGuideCard.assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cadangan Perangkat").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Panduan & Arti Ikon").assertIsDisplayed()
         composeTestRule.onNodeWithText("/storage/emulated/0/Documents/").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_drive_status_card").assertDoesNotExist()
         composeTestRule.onNodeWithTag("theme_selector").assertDoesNotExist()

@@ -289,16 +289,46 @@ class RadiantLayoutAndCodecTest {
     }
 
     @Test
-    fun `json codec decodes general build apk guide template cleanly`() {
-        val templateFile = java.io.File("../panduan/Alur_Mindmap_Build_APK_(umum).json")
-            .takeIf { it.exists() }
-            ?: java.io.File("panduan/Alur_Mindmap_Build_APK_(umum).json")
-        assertTrue("Guide JSON should exist at ${templateFile.absolutePath}", templateFile.exists())
+    fun `json codec decodes multi-branch indonesian mindmap tree cleanly`() {
+        val multiBranchJson = """
+            {
+              "title": "Alur Rilis Aplikasi Android",
+              "tree": {
+                "title": "Alur Rilis Aplikasi Android",
+                "children": [
+                  {
+                    "title": "Desain & UI",
+                    "children": [
+                      { "title": "Tema Ikut Sistem" },
+                      { "title": "Prioritas Beranda" }
+                    ]
+                  },
+                  {
+                    "title": "Cadangan Perangkat",
+                    "children": [
+                      { "title": "Documents Default" },
+                      { "title": "Anti-Timpa Kosong" }
+                    ]
+                  },
+                  {
+                    "title": "Rilis Dual-Repo",
+                    "link": "https://chucklebytes482.github.io/petapikir-site/",
+                    "children": [
+                      { "title": "R8 arm64-v8a < 10 MB" },
+                      { "title": "Robolectric Offline" }
+                    ]
+                  }
+                ]
+              }
+            }
+        """.trimIndent()
 
         val codec = MindMapJsonCodec()
-        val decoded = codec.decodeDocument(templateFile.readText())
+        val decoded = codec.decodeDocument(multiBranchJson)
         assertNotNull(decoded)
-        assertEquals(27, decoded!!.nodes.size)
-        assertEquals("Alur Pembuatan & Build APK Android (Umum)", decoded.title)
+        assertEquals(10, decoded!!.nodes.size)
+        assertEquals("Alur Rilis Aplikasi Android", decoded.title)
+        val layout = RadiantLayoutEngine.compute(decoded)
+        assertEquals(10, layout.nodes.size)
     }
 }

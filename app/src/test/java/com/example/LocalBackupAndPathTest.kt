@@ -109,4 +109,76 @@ class LocalBackupAndPathTest {
             tempDocumentsRoot.deleteRecursively()
         }
     }
+
+    @Test
+    fun `startup sync protects local maps from empty device folder and merges newer device backups via Last-Write-Wins`() = runTest {
+        val tempDocumentsRoot = Files.createTempDirectory("petapikir_sync_test").toFile()
+        try {
+            val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+            val db = androidx.room.Room.inMemoryDatabaseBuilder(
+                context,
+                com.example.data.local.AppDatabase::class.java
+            ).allowMainThreadQueries().build()
+            try {
+                val codec = MindMapJsonCodec()
+                val prefs = com.example.backup.BackupPreferences(context)
+                val storage = DirectoryLocalBackupStorage(tempDocumentsRoot, codec)
+                val dao = db.mindMapDao()
+
+                // Seed local Room with 1 map while device directory is empty
+                val localDoc = MindMapTreeOps.createEmpty("Peta Lokal").copy(
+                    id = "map-shared",
+                    createdAt = 1_000L,
+                    updatedAt = 5_000L
+                )
+                dao.upsert(
+                    com.example.data.local.MindMapEntity(
+                        id = localDoc.id,
+                        title = localDoc.title,
+                        nodeCount = localDoc.nodes.size,
+                        createdAt = localDoc.createdAt,
+                        updatedAt = localDoc.updatedAt,
+                        documentJson = codec.encodeDocument(localDoc),
+                        backupLocation = null,
+                        lastBackedUpAt = 0L,
+                        backupState = com.example.model.SyncState.LOCAL_ONLY.name,
+                        isDeleted = false
+                    )
+                )
+
+                val repo = com.example.data.MindMapRepository(dao, codec, prefs, storage)
+
+                // 1) Empty device folder MUST NOT wipe local Room map
+                assertEquals(0, repo.syncFromDeviceOnLaunch())
+                assertEquals(1, dao.getActiveMaps().size)
+                assertEquals("Peta Lokal", dao.getById("map-shared")?.title)
+
+                // 2) Older device file MUST NOT overwrite newer local map
+                val olderDeviceDoc = localDoc.copy(title = "Versi Lama", updatedAt = 3_000L)
+                storage.backupDocument(olderDeviceDoc, null, BackupSettings()).getOrThrow()
+                assertEquals(0, repo.syncFromDeviceOnLaunch())
+                assertEquals("Peta Lokal", dao.getById("map-shared")?.title)
+
+                // 3) Newer device file + extra map on device MUST restore via Last-Write-Wins
+                val newerDeviceDoc = localDoc.copy(title = "Versi Terbaru", updatedAt = 9_000L)
+                val extraDeviceDoc = MindMapTreeOps.createEmpty("Peta Tambahan").copy(
+                    id = "map-extra",
+                    createdAt = 2_000L,
+                    updatedAt = 8_000L
+                )
+                storage.backupDocument(newerDeviceDoc, null, BackupSettings()).getOrThrow()
+                storage.backupDocument(extraDeviceDoc, null, BackupSettings()).getOrThrow()
+
+                val restored = repo.syncFromDeviceOnLaunch()
+                assertEquals(2, restored)
+                assertEquals(2, dao.getActiveMaps().size)
+                assertEquals("Versi Terbaru", dao.getById("map-shared")?.title)
+                assertEquals("Peta Tambahan", dao.getById("map-extra")?.title)
+            } finally {
+                db.close()
+            }
+        } finally {
+            tempDocumentsRoot.deleteRecursively()
+        }
+    }
 }
