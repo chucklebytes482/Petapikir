@@ -37,7 +37,7 @@ class HomeAndLocalBackupUiTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun `home screen renders Priority 1 local backup card strictly above Priority 2 web guide card with default Documents path`() {
+    fun `home screen renders Priority 1 local backup card strictly above Priority 2 web guide card with fixed autosync path`() {
         var openedBackupSheet = false
         var openedWebGuide = false
 
@@ -81,7 +81,7 @@ class HomeAndLocalBackupUiTest {
         webGuideCard.assertIsDisplayed()
         composeTestRule.onNodeWithText("Cadangan Perangkat").assertIsDisplayed()
         composeTestRule.onNodeWithText("Panduan & Arti Ikon").assertIsDisplayed()
-        composeTestRule.onNodeWithText("/storage/emulated/0/Documents/").assertIsDisplayed()
+        composeTestRule.onNodeWithText("/storage/emulated/0/autosync/petapikir_backup_json/").assertIsDisplayed()
         composeTestRule.onNodeWithTag("home_drive_status_card").assertDoesNotExist()
         composeTestRule.onNodeWithTag("theme_selector").assertDoesNotExist()
 
@@ -120,7 +120,7 @@ class HomeAndLocalBackupUiTest {
 
         composeTestRule.onNodeWithTag("local_backup_status_card").assertIsDisplayed()
         composeTestRule.onNodeWithTag("local_backup_active_path_text")
-            .assertTextContains("/storage/emulated/0/autosync/petapikir_backup_json/")
+            .assertTextContains("/storage/emulated/0/autosync/petapikir_backup_json/", substring = true)
         composeTestRule.onNodeWithTag("backup_pick_folder_button").assertDoesNotExist()
         composeTestRule.onNodeWithTag("backup_subpath_input").assertDoesNotExist()
     }
