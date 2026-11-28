@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -106,33 +107,21 @@ class HomeAndLocalBackupUiTest {
     }
 
     @Test
-    fun `local backup sheet supports picking folder and saving custom subpath without manual reset, import, or backup-all buttons`() {
-        var pickedFolder = false
-        var savedSubPath: String? = null
-
+    fun `local backup sheet shows status and the fixed autosync path without folder picker`() {
         composeTestRule.setContent {
             PetaPikirTheme {
                 LocalBackupSheetContent(
                     backupSettings = BackupSettings(),
-                    backupStatus = LocalBackupStatus.Ready,
-                    onPickDocumentsFolder = { pickedFolder = true },
-                    onSaveSubPath = { savedSubPath = it }
+                    backupStatus = LocalBackupStatus.Ready
                 )
             }
         }
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("local_backup_status_card").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("backup_pick_folder_button").performScrollTo().assertIsDisplayed().performClick()
-        composeTestRule.onNodeWithTag("backup_subpath_input").performScrollTo().performTextClearance()
-        composeTestRule.onNodeWithTag("backup_subpath_input").performTextInput("Catatan/Ide")
-        composeTestRule.onNodeWithTag("backup_save_path_button").performScrollTo().performClick()
-        composeTestRule.onNodeWithTag("backup_reset_default_button").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("backup_all_button").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("backup_import_button").assertDoesNotExist()
-        composeTestRule.waitForIdle()
-
-        assertTrue(pickedFolder)
-        assertEquals("Catatan/Ide", savedSubPath)
+        composeTestRule.onNodeWithTag("local_backup_active_path_text")
+            .assertTextContains("/storage/emulated/0/autosync/petapikir_backup_json/")
+        composeTestRule.onNodeWithTag("backup_pick_folder_button").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("backup_subpath_input").assertDoesNotExist()
     }
 }

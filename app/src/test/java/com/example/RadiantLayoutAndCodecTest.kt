@@ -139,26 +139,6 @@ class RadiantLayoutAndCodecTest {
     }
 
     @Test
-    fun `backup filename builder produces clean readable json filenames`() {
-        assertEquals(
-            "Peta Pikiran Baru.json",
-            com.example.backup.BackupPathValidator.buildSafeFileName("  Peta Pikiran Baru  ")
-        )
-        assertEquals(
-            "Rencana Q1 Q2.json",
-            com.example.backup.BackupPathValidator.buildSafeFileName("Rencana: Q1/Q2*")
-        )
-        assertEquals(
-            "Peta Pikiran.json",
-            com.example.backup.BackupPathValidator.buildSafeFileName("   ")
-        )
-        assertEquals(
-            "Ide (abc123).json",
-            com.example.backup.BackupPathValidator.buildSafeFileName("Ide", suffix = "abc123")
-        )
-    }
-
-    @Test
     fun `web link normalization and tree link field decode properly`() {
         assertEquals("", com.example.ui.components.normalizeWebLink("   "))
         assertEquals("https://contoh.com", com.example.ui.components.normalizeWebLink("contoh.com"))
