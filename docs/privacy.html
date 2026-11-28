@@ -77,14 +77,14 @@
       <h2>2. On-Device Storage &amp; Automatic Local Backup</h2>
       <ul>
         <li>Your mind maps are saved in an on-device Room database for fast offline editing.</li>
-        <li>Every create, edit, and delete is automatically backed up as plain JSON files to your device's <code>/storage/emulated/0/Documents/</code> directory by default (without creating any automatic subfolder), or to any subfolder inside <code>/storage/emulated/0/Documents/</code> that you choose via Android's Storage Access Framework or relative path settings.</li>
+        <li>Every create, edit, and delete is automatically saved as one JSON file at <code>/storage/emulated/0/autosync/petapikir_backup_json/petapikir.json</code>. The path is fixed and cannot be changed in the App.</li>
         <li>PetaPikir never requests broad all-files storage permissions (such as <code>MANAGE_EXTERNAL_STORAGE</code>).</li>
       </ul>
 
       <h2>3. Data Retention &amp; Deletion</h2>
       <ul>
-        <li>You have full control over your local JSON backup files inside <code>/storage/emulated/0/Documents/</code> and can move, copy, or delete them using any file manager at any time.</li>
-        <li>Uninstalling the App removes its internal database while preserving any JSON backups already saved in your Documents directory.</li>
+        <li>You have full control over the backup file <code>petapikir.json</code> and can move, copy, or delete it using any file manager at any time. Deleting a map writes a deletion marker to the file, and that marker is kept.</li>
+        <li>Uninstalling the App removes its internal database while preserving the backup file already saved in the autosync folder.</li>
       </ul>
 
       <h2>4. Contact Us</h2>

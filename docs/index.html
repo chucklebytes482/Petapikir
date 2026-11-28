@@ -203,7 +203,7 @@
           </div>
           <div class="legend-body">
             <p class="legend-title">Cadangan Perangkat</p>
-            <p class="legend-desc">Membuka pengaturan folder cadangan otomatis di dalam penyimpanan Documents ponsel.</p>
+            <p class="legend-desc">Menampilkan status cadangan terakhir dan lokasi berkas cadangan di penyimpanan ponsel.</p>
           </div>
         </div>
         <div class="legend-item">
@@ -283,12 +283,12 @@
 
     <section class="card">
       <h2>Cadangan Perangkat Otomatis</h2>
-      <p>Setiap perubahan peta pikiran langsung tersimpan otomatis sebagai berkas <code>.json</code> di penyimpanan ponsel tanpa membuat folder otomatis:</p>
-      <div class="path-box">/storage/emulated/0/Documents/</div>
+      <p>Setiap perubahan peta pikiran langsung disimpan ke satu berkas <code>petapikir.json</code> di penyimpanan ponsel:</p>
+      <div class="path-box">/storage/emulated/0/autosync/petapikir_backup_json/petapikir.json</div>
       <ul>
-        <li><strong>Bebas Pilih Jalur:</strong> Ketuk kartu <strong>Cadangan Perangkat</strong> di bagian atas Beranda untuk memilih folder lain di dalam <code>Documents/</code> atau kosongkan subfolder agar kembali langsung ke <code>Documents/</code>.</li>
-        <li><strong>Sinkron Otomatis Saat Dibuka:</strong> Saat aplikasi dibuka, berkas cadangan yang lebih baru di folder aktif otomatis dipulihkan tanpa menimpa data lokal jika folder masih kosong.</li>
-        <li><strong>Kelola Bebas di File Manager:</strong> Berkas <code>.json</code> dapat dilihat, disalin, atau dipindahkan langsung dari aplikasi File Manager ponsel.</li>
+        <li><strong>Lokasi Tetap:</strong> Jalur berkas tetap dan tidak bisa dipilih ulang dari aplikasi.</li>
+        <li><strong>Gabung Otomatis:</strong> Saat aplikasi dibuka, data dari berkas dan data di perangkat digabung. Perubahan yang paling baru menang, dan penghapusan tetap tercatat.</li>
+        <li><strong>Kelola Bebas di File Manager:</strong> Berkas <code>petapikir.json</code> dapat dilihat, disalin, atau dipindahkan langsung dari aplikasi File Manager ponsel.</li>
       </ul>
     </section>
 
