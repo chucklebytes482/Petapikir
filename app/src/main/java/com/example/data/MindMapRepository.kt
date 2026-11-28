@@ -1,9 +1,12 @@
 package com.example.data
 
-import com.example.backup.BackupPathValidator
 import com.example.backup.BackupPreferences
 import com.example.backup.BackupSettings
-import com.example.backup.LocalBackupStorage
+import com.example.backup.SyncFileCodec
+import com.example.backup.SyncFileStore
+import com.example.backup.SyncLocation
+import com.example.backup.SyncMerge
+import com.example.backup.SyncRecord
 import com.example.data.local.MindMapDao
 import com.example.data.local.MindMapEntity
 import com.example.model.MindMapDocument
@@ -42,14 +45,18 @@ data class MindMapSummary(
     val previewChildTitles: List<String>
 )
 
+/**
+ * Penyimpanan utama di Room. Setiap perubahan disinkron ke satu berkas di
+ * [SyncLocation.FILE_PATH] (panduan 05). Gabung memakai last-write-wins per id.
+ */
 class MindMapRepository(
     private val dao: MindMapDao,
     val codec: MindMapJsonCodec,
     private val backupPreferences: BackupPreferences,
-    private val backupStorage: LocalBackupStorage
+    private val syncStore: SyncFileStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val backupMutex = Mutex()
+    private val syncMutex = Mutex()
 
     private val _backupStatus = MutableStateFlow<LocalBackupStatus>(LocalBackupStatus.Ready)
     val backupStatus: StateFlow<LocalBackupStatus> = _backupStatus.asStateFlow()
@@ -87,64 +94,127 @@ class MindMapRepository(
     init {
         scope.launch {
             val settings = backupPreferences.settingsFlow.first()
-            if (settings.lastBackupAt > 0L) {
-                _backupStatus.value = LocalBackupStatus.BackedUp(
-                    timestamp = settings.lastBackupAt,
-                    count = settings.backedUpCount
-                )
+            _backupStatus.value = if (settings.lastBackupAt > 0L) {
+                LocalBackupStatus.BackedUp(timestamp = settings.lastBackupAt, count = settings.backedUpCount)
             } else {
-                _backupStatus.value = LocalBackupStatus.Ready
+                LocalBackupStatus.Ready
             }
-            syncFromDeviceOnLaunch()
+            syncNow()
         }
     }
 
     /**
-     * Checks the active device backup directory on app launch and restores missing or newer
-     * mind maps via Last-Write-Wins (by `updatedAt`), while strictly guarding against empty
-     * folders overwriting existing local maps.
+     * Sinkron penuh: baca berkas perangkat, gabung dengan lokal, terapkan ke lokal,
+     * lalu tulis ulang berkas. Jika baca atau validasi gagal, tidak ada yang ditulis.
      */
-    suspend fun syncFromDeviceOnLaunch(): Int = backupMutex.withLock {
-        val settings = backupPreferences.settingsFlow.first()
-        val deviceDocs = backupStorage.importDocuments(settings).getOrNull().orEmpty()
-        if (deviceDocs.isEmpty()) {
-            return@withLock 0
+    suspend fun syncNow(): Result<Unit> = syncMutex.withLock {
+        _backupStatus.value = LocalBackupStatus.BackingUp
+        val result = runCatching { performSync() }
+        result.onSuccess { count ->
+            val now = System.currentTimeMillis()
+            backupPreferences.setLastBackupInfo(now, count)
+            _backupStatus.value = LocalBackupStatus.BackedUp(now, count)
+        }.onFailure { err ->
+            _backupStatus.value = LocalBackupStatus.Error(
+                err.localizedMessage ?: "Gagal menyimpan cadangan ke ${SyncLocation.DISPLAY_PATH}"
+            )
         }
+        result.map { }
+    }
 
-        val localById = dao.getActiveMaps().associateBy { it.id }
-        var restoredCount = 0
-
-        for (deviceDoc in deviceDocs) {
-            val localEntity = localById[deviceDoc.id]
-            val shouldRestore = localEntity == null || deviceDoc.updatedAt > localEntity.updatedAt
-            if (shouldRestore) {
-                val encoded = codec.encodeDocument(deviceDoc)
-                dao.upsert(
-                    MindMapEntity(
-                        id = deviceDoc.id,
-                        title = deviceDoc.title,
-                        nodeCount = deviceDoc.nodes.size,
-                        createdAt = deviceDoc.createdAt,
-                        updatedAt = deviceDoc.updatedAt,
-                        documentJson = encoded,
-                        backupLocation = localEntity?.backupLocation,
-                        lastBackedUpAt = maxOf(deviceDoc.updatedAt, localEntity?.lastBackedUpAt ?: 0L),
-                        backupState = SyncState.SYNCED.name,
-                        isDeleted = false
-                    )
-                )
-                restoredCount++
+    /** Mengembalikan jumlah peta aktif yang tersimpan. */
+    private suspend fun performSync(): Int {
+        // 1. Baca berkas perangkat. Berkas rusak melempar exception di sini, sebelum ada tulis.
+        val deviceRecords = syncStore.read()?.let { SyncFileCodec.decode(it) }.orEmpty()
+        for (record in deviceRecords) {
+            if (!record.deleted) {
+                check(codec.decodeDocument(record.value, record.id) != null) {
+                    "Data ${record.id} di berkas cadangan tidak valid. Berkas tidak ditimpa."
+                }
             }
         }
 
-        if (restoredCount > 0) {
-            val now = System.currentTimeMillis()
-            val totalCount = dao.getActiveMaps().size
-            backupPreferences.setLastBackupInfo(now, totalCount)
-            _backupStatus.value = LocalBackupStatus.BackedUp(now, totalCount)
+        // 2. Gabung dengan data lokal, termasuk penanda hapus.
+        val localRows = dao.getAllMaps()
+        val localById = localRows.associateBy { it.id }
+        val merged = SyncMerge.mergeLastWriteWins(
+            local = localRows.map { it.toSyncRecord() },
+            device = deviceRecords
+        )
+
+        // 3. Terapkan hasil gabung ke data lokal. Lewati baris yang berubah saat sinkron berjalan.
+        for (record in merged) {
+            val local = localById[record.id]
+            if (local != null && local.updatedAt == record.updatedAtMillis && local.isDeleted == record.deleted) {
+                continue
+            }
+            val current = dao.getById(record.id)
+            if (current?.updatedAt != local?.updatedAt) continue
+
+            if (record.deleted) {
+                val tombstone = local?.copy(
+                    isDeleted = true,
+                    updatedAt = record.updatedAtMillis,
+                    backupState = SyncState.PENDING_UPLOAD.name
+                ) ?: MindMapEntity(
+                    id = record.id,
+                    title = "",
+                    nodeCount = 0,
+                    createdAt = record.updatedAtMillis,
+                    updatedAt = record.updatedAtMillis,
+                    documentJson = "",
+                    isDeleted = true,
+                    backupState = SyncState.PENDING_UPLOAD.name
+                )
+                dao.upsert(tombstone)
+            } else {
+                val doc = codec.decodeDocument(record.value, record.id) ?: continue
+                dao.upsert(
+                    entityFromDocument(
+                        doc = doc,
+                        backupLocation = local?.backupLocation,
+                        lastBackedUpAt = local?.lastBackedUpAt ?: 0L
+                    )
+                )
+            }
         }
-        restoredCount
+
+        // 4. Tulis dari data lokal yang sudah berisi hasil gabung.
+        val records = dao.getAllMaps().map { it.toSyncRecord() }
+        if (records.isEmpty()) return 0
+        syncStore.write(SyncFileCodec.encode(records))
+
+        // 5. Tandai tersinkron.
+        val now = System.currentTimeMillis()
+        for (record in records) {
+            dao.markSynced(record.id, record.updatedAtMillis, SyncLocation.FILE_PATH, now)
+        }
+        return records.count { !it.deleted }
     }
+
+    private fun MindMapEntity.toSyncRecord(): SyncRecord = SyncRecord(
+        id = id,
+        value = if (isDeleted) "" else documentJson,
+        updatedAtMillis = updatedAt,
+        deleted = isDeleted
+    )
+
+    private fun entityFromDocument(
+        doc: MindMapDocument,
+        backupLocation: String?,
+        lastBackedUpAt: Long
+    ): MindMapEntity = MindMapEntity(
+        id = doc.id,
+        title = doc.title,
+        nodeCount = doc.nodes.size,
+        createdAt = doc.createdAt,
+        updatedAt = doc.updatedAt,
+        documentJson = codec.encodeDocument(doc),
+        backupLocation = backupLocation,
+        lastBackedUpAt = lastBackedUpAt,
+        backupState = SyncState.PENDING_UPLOAD.name,
+        isDeleted = false
+    )
 
     fun observeDocument(id: String): Flow<MindMapDocument?> =
         dao.observeById(id).map { entity -> entity?.let { codec.decodeDocument(it.documentJson) } }
@@ -188,135 +258,21 @@ class MindMapRepository(
 
     suspend fun saveDocument(document: MindMapDocument) {
         val existing = dao.getById(document.id)
-        val encoded = codec.encodeDocument(document)
-        val pendingEntity = MindMapEntity(
-            id = document.id,
-            title = document.title,
-            nodeCount = document.nodes.size,
-            createdAt = document.createdAt,
-            updatedAt = document.updatedAt,
-            documentJson = encoded,
-            backupLocation = existing?.backupLocation,
-            lastBackedUpAt = existing?.lastBackedUpAt ?: 0L,
-            backupState = SyncState.PENDING_UPLOAD.name,
-            isDeleted = false
+        dao.upsert(
+            entityFromDocument(
+                doc = document,
+                backupLocation = existing?.backupLocation,
+                lastBackedUpAt = existing?.lastBackedUpAt ?: 0L
+            )
         )
-        dao.upsert(pendingEntity)
-
-        scope.launch {
-            autoBackupSingleDocument(document.id)
-        }
+        scope.launch { syncNow() }
     }
 
+    /** Hapus sebagai penanda (soft delete) agar hapusan ikut tersinkron ke perangkat lain. */
     suspend fun deleteMap(id: String) {
-        val existing = dao.getById(id) ?: return
-        val settings = backupPreferences.settingsFlow.first()
-        dao.hardDeleteById(id)
-        scope.launch {
-            backupMutex.withLock {
-                backupStorage.deleteBackup(
-                    previousLocation = existing.backupLocation,
-                    title = existing.title,
-                    settings = settings
-                )
-            }
-        }
-    }
-
-    suspend fun updateBackupSubPath(rawSubPath: String): Result<String> {
-        val normalizedResult = BackupPathValidator.normalizeSubPath(rawSubPath)
-        val normalized = normalizedResult.getOrElse { return Result.failure(it) }
-        backupPreferences.setRelativeSubPath(normalized)
-        dao.resetAllBackupLocations()
-        val displayPath = BackupPathValidator.toDisplayPath(normalized)
-        scope.launch { syncAllToActivePath() }
-        return Result.success(displayPath)
-    }
-
-    suspend fun updateBackupTreeUri(uriString: String, treeDocumentId: String?): Result<String> {
-        val normalizedResult = BackupPathValidator.parseDocumentsTreeUri(treeDocumentId)
-        val normalized = normalizedResult.getOrElse { return Result.failure(it) }
-        backupPreferences.setTreeUri(uriString, normalized)
-        dao.resetAllBackupLocations()
-        val displayPath = BackupPathValidator.toDisplayPath(normalized)
-        scope.launch { syncAllToActivePath() }
-        return Result.success(displayPath)
-    }
-
-    private suspend fun syncAllToActivePath(): Result<Int> = backupMutex.withLock {
-        val settings = backupPreferences.settingsFlow.first()
-        val activeMaps = dao.getActiveMaps()
-        if (activeMaps.isEmpty()) {
-            val now = System.currentTimeMillis()
-            backupPreferences.setLastBackupInfo(now, 0)
-            _backupStatus.value = LocalBackupStatus.BackedUp(now, 0)
-            return@withLock Result.success(0)
-        }
-
-        _backupStatus.value = LocalBackupStatus.BackingUp
-        var savedCount = 0
-        var lastError: Throwable? = null
-
-        for (entity in activeMaps) {
-            val doc = codec.decodeDocument(entity.documentJson) ?: continue
-            val writeResult = backupStorage.backupDocument(
-                document = doc,
-                previousLocation = entity.backupLocation,
-                settings = settings
-            )
-            writeResult.onSuccess { info ->
-                savedCount++
-                dao.upsert(
-                    entity.copy(
-                        backupLocation = info.locationKey,
-                        lastBackedUpAt = info.timestamp,
-                        backupState = SyncState.SYNCED.name
-                    )
-                )
-            }.onFailure { err ->
-                lastError = err
-            }
-        }
-
-        return@withLock if (savedCount > 0 || lastError == null) {
-            val now = System.currentTimeMillis()
-            backupPreferences.setLastBackupInfo(now, savedCount)
-            _backupStatus.value = LocalBackupStatus.BackedUp(now, savedCount)
-            Result.success(savedCount)
-        } else {
-            val message = lastError?.localizedMessage ?: "Gagal menyimpan cadangan ke ${settings.displayPath}"
-            _backupStatus.value = LocalBackupStatus.Error(message)
-            Result.failure(lastError ?: IllegalStateException(message))
-        }
-    }
-
-    private suspend fun autoBackupSingleDocument(documentId: String) = backupMutex.withLock {
-        val entity = dao.getById(documentId)?.takeUnless { it.isDeleted } ?: return@withLock
-        val doc = codec.decodeDocument(entity.documentJson) ?: return@withLock
-        val settings = backupPreferences.settingsFlow.first()
-        _backupStatus.value = LocalBackupStatus.BackingUp
-
-        val result = backupStorage.backupDocument(
-            document = doc,
-            previousLocation = entity.backupLocation,
-            settings = settings
-        )
-
-        result.onSuccess { info ->
-            dao.upsert(
-                entity.copy(
-                    backupLocation = info.locationKey,
-                    lastBackedUpAt = info.timestamp,
-                    backupState = SyncState.SYNCED.name
-                )
-            )
-            val totalBackedUp = dao.getActiveMaps().count { it.backupState == SyncState.SYNCED.name }
-            backupPreferences.setLastBackupInfo(info.timestamp, totalBackedUp)
-            _backupStatus.value = LocalBackupStatus.BackedUp(info.timestamp, totalBackedUp)
-        }.onFailure { err ->
-            _backupStatus.value = LocalBackupStatus.Error(
-                err.localizedMessage ?: "Gagal mencadangkan otomatis ke ${settings.displayPath}"
-            )
-        }
+        val existing = dao.getById(id)?.takeUnless { it.isDeleted } ?: return
+        val now = maxOf(System.currentTimeMillis(), existing.updatedAt + 1)
+        dao.softDelete(id, now)
+        scope.launch { syncNow() }
     }
 }
