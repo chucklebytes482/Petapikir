@@ -5,7 +5,7 @@ Panduan umum (berlaku untuk semua repo) ada di root repo `plan`: https://github.
 Baca dan ikuti berkas berikut, dalam urutan ini:
 - `00-prinsip-kerja.md`
 - `01-penamaan.md`
-- `02-struktur-proyek.md` (termasuk aturan luring)
+- `02-struktur-proyek.md`
 - `03-build-dan-kualitas.md`
 - `04-ui-tema.md`
 - `05-cadangan-dan-sinkron.md`
