@@ -3,7 +3,7 @@
     <string name="web_guide_url">https://chucklebytes482.github.io/petapikir-site/</string>
 
     <string name="home_backup_card_title">Cadangan Perangkat</string>
-    <string name="home_backup_default_path">/storage/emulated/0/Documents/</string>
+    <string name="home_backup_default_path">/storage/emulated/0/autosync/petapikir_backup_json/</string>
     <string name="home_web_guide_title">Web Panduan</string>
     <string name="home_web_guide_subtitle">Panduan &amp; Arti Ikon</string>
     <string name="search_placeholder">Cari peta pikiran…</string>
@@ -13,15 +13,11 @@
     <string name="create_sample_map">Muat Contoh</string>
 
     <string name="backup_sheet_title">Cadangan Perangkat</string>
-    <string name="backup_sheet_subtitle">Luring penuh • JSON otomatis ke Documents</string>
+    <string name="backup_sheet_subtitle">Luring penuh • JSON otomatis ke autosync</string>
     <string name="backup_active_path_label">Jalur aktif</string>
     <string name="backup_status_ready">Siap mencadangkan otomatis</string>
     <string name="backup_status_backing_up">Menyimpan cadangan…</string>
     <string name="backup_status_backed_up">Tercadang otomatis</string>
-    <string name="backup_pick_folder_cta">Pilih Folder di Documents</string>
-    <string name="backup_subpath_label">Subfolder opsional di dalam Documents/</string>
-    <string name="backup_subpath_placeholder">Kosong = langsung di /storage/emulated/0/Documents/</string>
-    <string name="backup_save_path_cta">Simpan Jalur</string>
 
     <string name="editor_hint_unselected">Ketuk node untuk mengedit</string>
     <string name="action_add_child">Cabang</string>

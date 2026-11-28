@@ -7,33 +7,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
-import com.example.backup.BackupPathValidator
 import com.example.backup.BackupSettings
 import com.example.data.LocalBackupStatus
 import com.example.ui.icons.AppIcons
@@ -58,9 +46,7 @@ import java.util.Locale
 fun LocalBackupBottomSheet(
     backupSettings: BackupSettings,
     backupStatus: LocalBackupStatus,
-    onDismiss: () -> Unit,
-    onPickDocumentsFolder: () -> Unit,
-    onSaveSubPath: (String) -> Unit
+    onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -72,9 +58,7 @@ fun LocalBackupBottomSheet(
     ) {
         LocalBackupSheetContent(
             backupSettings = backupSettings,
-            backupStatus = backupStatus,
-            onPickDocumentsFolder = onPickDocumentsFolder,
-            onSaveSubPath = onSaveSubPath
+            backupStatus = backupStatus
         )
     }
 }
@@ -83,20 +67,10 @@ fun LocalBackupBottomSheet(
 fun LocalBackupSheetContent(
     backupSettings: BackupSettings,
     backupStatus: LocalBackupStatus,
-    onPickDocumentsFolder: () -> Unit,
-    onSaveSubPath: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
     val sageColor = if (isDark) DarkBrandSage else BrandSage
-
-    var subPathInput by remember { mutableStateOf(backupSettings.relativeSubPath) }
-    var validationError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(backupSettings.relativeSubPath) {
-        subPathInput = backupSettings.relativeSubPath
-        validationError = null
-    }
 
     Column(
         modifier = modifier
@@ -193,75 +167,6 @@ fun LocalBackupSheetContent(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.testTag("local_backup_active_path_text")
-                )
-            }
-        }
-
-        OutlinedButton(
-            onClick = onPickDocumentsFolder,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .testTag("backup_pick_folder_button")
-        ) {
-            Icon(
-                imageVector = AppIcons.FolderOpen,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.backup_pick_folder_cta),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedTextField(
-                value = subPathInput,
-                onValueChange = {
-                    subPathInput = it
-                    validationError = null
-                },
-                label = { Text(stringResource(R.string.backup_subpath_label)) },
-                placeholder = { Text(stringResource(R.string.backup_subpath_placeholder)) },
-                prefix = { Text("Documents/") },
-                isError = validationError != null,
-                supportingText = {
-                    val previewText = validationError ?: run {
-                        BackupPathValidator.normalizeSubPath(subPathInput)
-                            .map { BackupPathValidator.toDisplayPath(it) }
-                            .getOrElse { it.message ?: "" }
-                    }
-                    Text(previewText)
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("backup_subpath_input")
-            )
-
-            Button(
-                onClick = {
-                    val check = BackupPathValidator.normalizeSubPath(subPathInput)
-                    check.onSuccess {
-                        validationError = null
-                        onSaveSubPath(subPathInput)
-                    }.onFailure { err ->
-                        validationError = err.message ?: "Jalur tidak valid."
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("backup_save_path_button")
-            ) {
-                Text(
-                    text = stringResource(R.string.backup_save_path_cta),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

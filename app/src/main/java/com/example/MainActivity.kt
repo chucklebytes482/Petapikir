@@ -3,12 +3,9 @@ package com.example
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.provider.DocumentsContract
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,7 +30,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.backup.BackupPathValidator
 import com.example.ui.MindMapViewModel
 import com.example.ui.UiEvent
 import com.example.ui.components.LocalBackupBottomSheet
@@ -71,21 +67,6 @@ fun PetaPikirApp(viewModel: MindMapViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val uiScope = rememberCoroutineScope()
     val fitTriggerFlow = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
-
-    val documentsFolderPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { treeUri ->
-        if (treeUri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    treeUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            }
-            val treeDocId = runCatching { DocumentsContract.getTreeDocumentId(treeUri) }.getOrNull()
-            viewModel.selectBackupTreeUri(treeUri.toString(), treeDocId)
-        }
-    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -162,15 +143,7 @@ fun PetaPikirApp(viewModel: MindMapViewModel = viewModel()) {
         LocalBackupBottomSheet(
             backupSettings = backupSettings,
             backupStatus = backupStatus,
-            onDismiss = { showBackupSheet = false },
-            onPickDocumentsFolder = {
-                val initialDocumentsUri = DocumentsContract.buildDocumentUri(
-                    "com.android.externalstorage.documents",
-                    BackupPathValidator.PRIMARY_DOCUMENTS_TREE_ID
-                )
-                documentsFolderPickerLauncher.launch(initialDocumentsUri)
-            },
-            onSaveSubPath = viewModel::saveCustomBackupSubPath
+            onDismiss = { showBackupSheet = false }
         )
     }
 }

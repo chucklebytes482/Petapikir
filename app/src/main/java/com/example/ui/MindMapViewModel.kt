@@ -3,9 +3,9 @@ package com.example.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.backup.AndroidLocalBackupManager
 import com.example.backup.BackupPreferences
 import com.example.backup.BackupSettings
+import com.example.backup.PetapikirSyncManager
 import com.example.data.LocalBackupStatus
 import com.example.data.MindMapJsonCodec
 import com.example.data.MindMapRepository
@@ -54,7 +54,7 @@ class MindMapViewModel(application: Application) : AndroidViewModel(application)
             dao = db.mindMapDao(),
             codec = codec,
             backupPreferences = BackupPreferences(application),
-            backupStorage = AndroidLocalBackupManager(application, codec)
+            syncStore = PetapikirSyncManager(application)
         )
     }
 
@@ -318,29 +318,5 @@ class MindMapViewModel(application: Application) : AndroidViewModel(application)
         val doc = _activeDocument.value ?: return null
         val id = _selectedNodeId.value ?: return null
         return doc.nodes.firstOrNull { it.id == id }
-    }
-
-    fun selectBackupTreeUri(uriString: String, treeDocumentId: String?) {
-        viewModelScope.launch {
-            repository.updateBackupTreeUri(uriString, treeDocumentId)
-                .onSuccess { displayPath ->
-                    _events.emit(UiEvent.ShowMessage("Jalur cadangan diubah ke $displayPath"))
-                }
-                .onFailure { err ->
-                    _events.emit(UiEvent.ShowMessage(err.message ?: "Folder harus di dalam /storage/emulated/0/Documents/"))
-                }
-        }
-    }
-
-    fun saveCustomBackupSubPath(rawSubPath: String) {
-        viewModelScope.launch {
-            repository.updateBackupSubPath(rawSubPath)
-                .onSuccess { displayPath ->
-                    _events.emit(UiEvent.ShowMessage("Jalur cadangan disimpan: $displayPath"))
-                }
-                .onFailure { err ->
-                    _events.emit(UiEvent.ShowMessage(err.message ?: "Jalur cadangan tidak valid."))
-                }
-        }
     }
 }
