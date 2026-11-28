@@ -5,7 +5,9 @@ on:
     paths: ['app/**', 'gradle/**', 'build.gradle.kts', 'settings.gradle.kts', 'gradle.properties', '.github/workflows/release.yml']
   workflow_dispatch:
 permissions: { contents: write }
-concurrency: { group: android-release-${{ github.ref }}, cancel-in-progress: false }
+concurrency:
+  group: "android-release-${{ github.ref }}"
+  cancel-in-progress: false
 env:
   APP_SLUG: "petapikir"
   APP_DISPLAY_NAME: "PetaPikir"

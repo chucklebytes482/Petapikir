@@ -5,7 +5,9 @@ on:
     paths: ['docs/**', '.github/workflows/publish-site.yml']
   workflow_dispatch:
 permissions: { contents: read }
-concurrency: { group: publish-site-${{ github.ref }}, cancel-in-progress: false }
+concurrency:
+  group: "publish-site-${{ github.ref }}"
+  cancel-in-progress: false
 env:
   PUBLIC_SITE_REPO: "chucklebytes482/petapikir-site"
 
